@@ -121,7 +121,9 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
               : // Keep the prompt fixed on home as well so it can't be clipped by
                 // the app's scroll container (`overflow-y-auto` in app/layout.tsx).
                 // This makes /issues -> / a true reverse of / -> /issues.
-                "fixed inset-x-0 top-[25vh] z-40 mx-auto w-full max-w-2xl px-5"
+                // Include navbar height (~72px) to match the old layout where the
+                // prompt sat below the navbar with `pt-[25vh]`.
+                "fixed inset-x-0 top-[calc(25vh+72px)] z-40 mx-auto w-full max-w-2xl px-5"
           }
         >
           <Prompt
