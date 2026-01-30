@@ -101,37 +101,66 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={[
-        "relative flex w-full flex-col items-center overflow-x-hidden",
-        // Add a little bottom padding on issues so future content won't sit
-        // directly behind the fixed composer.
-        isIssues ? "pb-32 pt-6" : "pb-16 pt-6",
+        // Fill the available height so /issues can have its own inner scroller
+        // (matching the reference layout) instead of relying on RootLayout's
+        // `overflow-y-auto`.
+        "relative flex h-full min-h-0 w-full flex-col overflow-x-hidden",
+        // Add a little bottom padding so content won't sit behind the fixed composer.
+        isIssues ? "pb-32" : "pb-16",
       ].join(" ")}
     >
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5">
-        {children}
+      {isIssues ? (
+        <>
+          {/* Top padding + (optional) gradient area wrapper to match reference spacing */}
+          <div className="relative w-full px-5 pt-4 md:pt-10">
+            {/* The reference has a blurred gradient overlay here; spacing matters most */}
+            <div className="relative z-20 mx-auto h-full">
+              <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-4" />
+            </div>
+          </div>
 
-        <div
-          ref={promptWrapperRef}
-          className={
-            isIssues
-              ? // Avoid using CSS transforms for centering in the fixed state.
-                // The FLIP animation also uses `transform`, and stacking transforms
-                // causes the prompt to "pop" mid-flight when going /issues -> /.
-                "fixed inset-x-0 bottom-6 z-40 mx-auto w-full max-w-2xl px-5"
-              : // Keep the prompt fixed on home as well so it can't be clipped by
-                // the app's scroll container (`overflow-y-auto` in app/layout.tsx).
-                // This makes /issues -> / a true reverse of / -> /issues.
-                // Include navbar height (~72px) to match the old layout where the
-                // prompt sat below the navbar with `pt-[25vh]`.
-                "fixed inset-x-0 top-[calc(25vh+72px)] z-40 mx-auto w-full max-w-2xl px-5"
-          }
-        >
-          <Prompt
-            variant={variant}
-            isNavigating={navState.active}
-            navDirection={navState.direction}
-          />
+          {/* Inbox area */}
+          <div className="-mt-10 flex h-full min-h-0 flex-1 flex-col">
+            <div className="mx-auto min-h-0 w-full flex-1">
+              <div
+                className="min-h-0 h-full w-full overflow-y-auto px-5 pb-4 md:px-0"
+                style={{ scrollbarGutter: "stable both-edges" }}
+              >
+                <div className="mx-auto mt-16 max-w-2xl md:mt-20">
+                  {children}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        // Home: keep the old centered content constraints (no scrolling content yet).
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-6">
+          {children}
         </div>
+      )}
+
+      <div
+        ref={promptWrapperRef}
+        className={
+          isIssues
+            ? // Avoid using CSS transforms for centering in the fixed state.
+              // The FLIP animation also uses `transform`, and stacking transforms
+              // causes the prompt to "pop" mid-flight when going /issues -> /.
+              "fixed inset-x-0 bottom-6 z-40 mx-auto w-full max-w-2xl px-5"
+            : // Keep the prompt fixed on home as well so it can't be clipped by
+              // the app's scroll container (`overflow-y-auto` in app/layout.tsx).
+              // This makes /issues -> / a true reverse of / -> /issues.
+              // Include navbar height (~72px) to match the old layout where the
+              // prompt sat below the navbar with `pt-[25vh]`.
+              "fixed inset-x-0 top-[calc(25vh+72px)] z-40 mx-auto w-full max-w-2xl px-5"
+        }
+      >
+        <Prompt
+          variant={variant}
+          isNavigating={navState.active}
+          navDirection={navState.direction}
+        />
       </div>
     </div>
   );
