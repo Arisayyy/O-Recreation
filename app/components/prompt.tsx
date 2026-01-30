@@ -16,14 +16,28 @@ const SUGGESTIONS = [
   "What can you do?",
 ] as const;
 
-export function Prompt() {
+type PromptVariant = "home" | "issues";
+type NavDirection = "toIssues" | "toHome";
+
+export function Prompt({
+  variant = "home",
+  isNavigating = false,
+  navDirection = null,
+}: {
+  variant?: PromptVariant;
+  isNavigating?: boolean;
+  navDirection?: NavDirection | null;
+}) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [value, setValue] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
 
   const isEmpty = useMemo(() => value.trim().length === 0, [value]);
+  const hideExtras = variant === "issues";
+  const fadeNearEdgeDelay = isNavigating ? "delay-[420ms]" : "delay-0";
+  const collapseNearBottomDelay =
+    isNavigating && navDirection === "toIssues" ? "delay-[420ms]" : "delay-0";
 
   return (
     <div
@@ -34,22 +48,46 @@ export function Prompt() {
         "leading-6",
       ].join(" ")}
     >
-      <h1
+      <div
+        aria-hidden={hideExtras}
         className={[
-          "m-0 pb-6 text-center font-medium",
-          "text-[48px] leading-[48px]",
-          "text-orchid-ink",
-          "font-orchid-display",
+          "grid overflow-hidden transition-[grid-template-rows] duration-[600ms] ease-out-expo",
+          collapseNearBottomDelay,
+          hideExtras
+            ? "grid-rows-[0fr]"
+            : "grid-rows-[1fr]",
         ].join(" ")}
       >
-        Hey, Orchid Team!
-      </h1>
+        <div
+          className={[
+            "min-h-0 transition-opacity duration-[600ms] ease-out-expo",
+            fadeNearEdgeDelay,
+            hideExtras ? "opacity-0" : "opacity-100",
+          ].join(" ")}
+        >
+          <h1
+            className={[
+              "m-0 pb-6 text-center font-medium",
+              "text-[48px] leading-[48px]",
+              "text-orchid-ink",
+              "font-orchid-display",
+            ].join(" ")}
+          >
+            Hey, Orchid Team!
+          </h1>
+        </div>
+      </div>
 
       <div className="relative z-10">
-        <div className="rounded-orchid-prompt-outer bg-orchid-surface p-[2px] transition-shadow duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]">
+        <div
+          data-orchid-flip="prompt-composer"
+          className="bg-surface-subtle p-0.5 hover:ring-bg-surface-strong ease-out-expo w-full overflow-hidden rounded-[14px] transition-shadow duration-500 hover:ring-2"
+        >
           {/* Collapsed spacer block (kept to preserve original structure) */}
-          <div className="grid grid-cols-[628px] grid-rows-[0px] overflow-hidden transition-[transform,translate,scale,rotate] duration-500 ease-[cubic-bezier(0,0,0.2,1)]">
-            <div className="px-2 py-1" />
+          <div className="grid overflow-hidden transition-all duration-500 ease-out-expo grid-rows-[0fr]">
+            <div className="min-h-0">
+              <div className="px-2 py-1 overflow-visible" />
+            </div>
           </div>
 
           <div className="rounded-orchid-prompt-inner bg-white shadow-orchid-prompt">
@@ -76,8 +114,6 @@ export function Prompt() {
                         "overflow-hidden",
                       ].join(" ")}
                       onChange={(e) => setValue(e.target.value)}
-                      onFocus={() => setIsFocused(true)}
-                      onBlur={() => setIsFocused(false)}
                     />
 
                     {/* Overlay placeholder (matches original positioning + hide-on-focus behavior) */}
@@ -86,7 +122,7 @@ export function Prompt() {
                         "pointer-events-none absolute left-2 top-2",
                         "h-[21px] w-auto overflow-hidden whitespace-nowrap",
                         "text-sm leading-[21px] text-orchid-placeholder",
-                        !isEmpty || isFocused ? "opacity-0" : "opacity-100",
+                        !isEmpty ? "opacity-0" : "opacity-100",
                       ].join(" ")}
                     >
                       Ask anything...
@@ -107,17 +143,17 @@ export function Prompt() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="relative inline-flex h-7 flex-none items-center rounded-orchid-pill px-1.5 py-0"
+                className="group/button relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2 focus-visible:ring-orchid-ink"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <div className="absolute inset-2 rounded-orchid-pill bg-orchid-surface-2 blur-[8px] opacity-0" />
-                <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-muted">
+                <div className="absolute inset-2 rounded-orchid-pill border border-transparent bg-orchid-surface-2 opacity-0 blur-sm transition-transform group-hover/button:inset-0 group-hover/button:opacity-100 group-hover/button:blur-none group-active/button:inset-shadow-xs group-active/button:shadow-none" />
+                <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 16 16"
                     fill="currentColor"
                     aria-hidden="true"
-                    className="h-4 w-4 fill-orchid-muted"
+                    className="h-4 w-4 fill-orchid-muted transition-transform group-hover/button:fill-orchid-ink"
                   >
                     <path d="M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z" />
                   </svg>
@@ -214,13 +250,17 @@ export function Prompt() {
                 type="button"
                 disabled={isEmpty}
                 className={[
-                  "relative inline-flex h-7 flex-none items-center rounded-orchid-pill px-1.5 py-0",
-                  isEmpty ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+                  isEmpty
+                    ? "relative inline-flex h-7 flex-none cursor-not-allowed items-center rounded-orchid-pill px-1.5 py-0 opacity-50"
+                    : "group/button focus-visible:ring-neutral-strong relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
                 ].join(" ")}
               >
+                {!isEmpty && (
+                  <div className="absolute inset-0 rounded-orchid-pill border border-neutral bg-gradient-to-t from-surface to-surface shadow-xs transition-transform group-hover/button:to-surface-weak group-active/button:inset-shadow-xs group-active/button:shadow-none group-active/button:to-surface-subtle" />
+                )}
                 <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-ink">
                   <span className="px-[2px]">Go</span>
-                  <span className="inline-flex items-center rounded-orchid-keycap border border-orchid-border bg-orchid-surface-3 px-1 text-[12px] leading-[17.6px] text-orchid-placeholder shadow-orchid-keycap">
+                  <span className="hidden h-4 items-center rounded border border-neutral bg-surface-weak px-1 text-[12px] leading-[17.6px] text-orchid-placeholder shadow-xs md:inline-flex">
                     ↵
                   </span>
                 </div>
@@ -230,30 +270,47 @@ export function Prompt() {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        {SUGGESTIONS.map((label) => (
-          <button
-            key={label}
-            type="button"
-            className={[
-              "group/button focus-visible:ring-neutral-strong",
-              "relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5",
-              "whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
-            ].join(" ")}
-          >
-            <div
-              className={[
-                "absolute inset-0 rounded-orchid-pill border !border-neutral !border-[1px] shadow-xs transition-transform",
-                "bg-gradient-to-t from-surface to-surface",
-                "group-hover/button:to-surface-weak",
-                "group-active/button:inset-shadow-xs group-active/button:shadow-none group-active/button:to-surface-subtle",
-              ].join(" ")}
-            />
-            <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-ink">
-              <span className="px-[2px]">{label}</span>
-            </div>
-          </button>
-        ))}
+      <div
+        aria-hidden={hideExtras}
+        className={[
+          "grid overflow-hidden transition-[grid-template-rows] duration-[600ms] ease-out-expo",
+          collapseNearBottomDelay,
+          hideExtras ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "min-h-0 transition-opacity duration-[600ms] ease-out-expo",
+            fadeNearEdgeDelay,
+            hideExtras ? "opacity-0" : "opacity-100",
+          ].join(" ")}
+        >
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            {SUGGESTIONS.map((label) => (
+              <button
+                key={label}
+                type="button"
+                className={[
+                  "group/button focus-visible:ring-neutral-strong",
+                  "relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5",
+                  "whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
+                ].join(" ")}
+              >
+                <div
+                  className={[
+                    "absolute inset-0 rounded-orchid-pill border !border-neutral !border-[1px] shadow-xs transition-transform",
+                    "bg-gradient-to-t from-surface to-surface",
+                    "group-hover/button:to-surface-weak",
+                    "group-active/button:inset-shadow-xs group-active/button:shadow-none group-active/button:to-surface-subtle",
+                  ].join(" ")}
+                />
+                <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-ink">
+                  <span className="px-[2px]">{label}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -27,7 +27,9 @@
   /* Suggestion chip aliases (match original Tailwind semantics) */
   --color-surface: rgb(255, 255, 255);
   --color-surface-weak: rgb(248, 250, 248);
-  --color-surface-subtle: rgb(231, 233, 231);
+  --color-surface-subtle: rgb(239, 241, 239);
+  --color-surface-strong: rgb(231, 233, 231);
+  --color-bg-surface-strong: rgb(231, 233, 231);
   --color-neutral: rgb(223, 226, 223);
   --color-neutral-strong: rgb(29, 33, 28);
   --color-copy: rgb(29, 33, 28);
@@ -35,6 +37,9 @@
   /* Match the reference chip shadow intensity */
   --shadow-xs: 0 1px 1px 0 rgb(0 0 0 / 0.1);
   --inset-shadow-xs: inset 0 1px 1px 0 rgb(0 0 0 / 0.1);
+
+  /* Easing used by the reference UI */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
   --radius-orchid-prompt-outer: 14px;
   --radius-orchid-prompt-inner: 10px;

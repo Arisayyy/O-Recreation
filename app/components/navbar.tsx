@@ -1,5 +1,7 @@
 /* eslint-disable react/no-danger */
+"use client";
 import React from "react";
+import { useRouter } from "next/navigation";
 
 const __css = `*,*::before,*::after{box-sizing:border-box;border-width:0;border-style:solid;border-color:currentColor;}
 
@@ -290,7 +292,7 @@ const __html = `<nav class="x1">
           </a>
         </div>
         <div class="x6">
-          <a href="/mail/home" class="x7">
+          <a href="/" class="x7">
             <div class="x8"></div>
             <span class="x9">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" class="x10">
@@ -299,12 +301,12 @@ const __html = `<nav class="x1">
     Home
             </span>
           </a>
-          <a href="/mail/primary" class="x7">
+          <a href="/issues" class="x7">
             <span class="x12">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" class="x13">
                 <path fill-rule="evenodd" d="M4.784 3A2.25 2.25 0 0 0 2.68 4.449L1.147 8.475A2.25 2.25 0 0 0 1 9.276v1.474A2.25 2.25 0 0 0 3.25 13h9.5A2.25 2.25 0 0 0 15 10.75V9.276c0-.274-.05-.545-.147-.801l-1.534-4.026A2.25 2.25 0 0 0 11.216 3H4.784Zm-.701 1.983a.75.75 0 0 1 .7-.483h6.433a.75.75 0 0 1 .701.483L13.447 9h-2.412a1 1 0 0 0-.832.445l-.406.61a1 1 0 0 1-.832.445h-1.93a1 1 0 0 1-.832-.445l-.406-.61A1 1 0 0 0 4.965 9H2.553l1.53-4.017Z" clip-rule="evenodd" class="x14"></path>
               </svg>
-    Inbox
+    Issues
             </span>
           </a>
           <a href="/mail/sent" class="x7">
@@ -342,11 +344,31 @@ const __html = `<nav class="x1">
     </nav>`;
 
 export function Navbar() {
+  const router = useRouter();
+
   return (
     <>
       <style>{__css}</style>
       {/* display:contents avoids introducing a wrapper box in most layouts */}
-      <div style={{ display: "contents" }} dangerouslySetInnerHTML={{ __html }} />
+      <div
+        style={{ display: "contents" }}
+        onClickCapture={(e) => {
+          // Convert internal <a href="/..."> clicks into client-side transitions,
+          // even though the navbar is rendered via dangerouslySetInnerHTML.
+          const target = e.target as Element | null;
+          const anchor = target?.closest("a");
+          if (!anchor) return;
+          if (anchor.getAttribute("target") === "_blank") return;
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+          const href = anchor.getAttribute("href");
+          if (!href || !href.startsWith("/")) return;
+
+          e.preventDefault();
+          router.push(href);
+        }}
+        dangerouslySetInnerHTML={{ __html }}
+      />
     </>
   );
 }
