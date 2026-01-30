@@ -1,3 +1,5 @@
+import { IssueDetailClient } from "@/app/components/issue-detail/issue-detail-client";
+
 export default async function IssuePage({
   params,
 }: {
@@ -5,12 +7,8 @@ export default async function IssuePage({
 }) {
   const { issueId } = await params;
 
-  // Issue page (placeholder)
   return (
-    <div className="font-orchid-ui text-orchid-ink">
-      <div className="text-sm leading-[21px] text-orchid-muted">Issue</div>
-      <div className="text-lg leading-7">{issueId}</div>
-    </div>
+    <IssueDetailClient issueId={issueId} />
   );
 }
 

@@ -3,6 +3,9 @@
 import React from "react";
 import { Playfair_Display } from "next/font/google";
 import { useMemo, useRef, useState } from "react";
+import { issueMessages } from "@/app/collections/issueMessages";
+import { issues, type Issue } from "@/app/collections/issues";
+import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
 
 const playfairDisplay = Playfair_Display({
   weight: ["500"],
@@ -23,10 +26,12 @@ export function Prompt({
   variant = "home",
   isNavigating = false,
   navDirection = null,
+  issueIdForComment = null,
 }: {
   variant?: PromptVariant;
   isNavigating?: boolean;
   navDirection?: NavDirection | null;
+  issueIdForComment?: string | null;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -38,6 +43,39 @@ export function Prompt({
   const fadeNearEdgeDelay = isNavigating ? "delay-[420ms]" : "delay-0";
   const collapseNearBottomDelay =
     isNavigating && navDirection === "toIssues" ? "delay-[420ms]" : "delay-0";
+
+  const canSendComment = variant === "issues" && !!issueIdForComment;
+
+  const sendComment = () => {
+    if (!canSendComment) return;
+    if (isEmpty) return;
+
+    const now = Date.now();
+    const author = getAnonymousIdentity();
+    const msg = value.trim();
+
+    const messages = issueMessages.get();
+    messages.insert({
+      id: globalThis.crypto?.randomUUID?.() ?? `${now}`,
+      issueId: issueIdForComment!,
+      type: "comment",
+      body: msg,
+      createdAt: now,
+      author: {
+        name: author.name ?? "Anonymous",
+        color: author.color ?? "#6366f1",
+      },
+    });
+
+    // Bump issue updatedAt so it floats in the inbox.
+    const issueCollection = issues.get();
+    issueCollection.update(issueIdForComment!, (draft: Issue) => {
+      draft.updatedAt = now;
+    });
+
+    setValue("");
+    textareaRef.current?.focus();
+  };
 
   return (
     <div
@@ -114,6 +152,13 @@ export function Prompt({
                         "overflow-hidden",
                       ].join(" ")}
                       onChange={(e) => setValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (!canSendComment) return;
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          sendComment();
+                        }
+                      }}
                     />
 
                     {/* Placeholder */}
@@ -125,7 +170,7 @@ export function Prompt({
                         !isEmpty ? "opacity-0" : "opacity-100",
                       ].join(" ")}
                     >
-                      Ask anything...
+                      {canSendComment ? "Add a comment…" : "Ask anything..."}
                     </div>
                   </div>
                 </div>
@@ -254,12 +299,16 @@ export function Prompt({
                     ? "relative inline-flex h-7 flex-none cursor-not-allowed items-center rounded-orchid-pill px-1.5 py-0 opacity-50"
                     : "group/button focus-visible:ring-neutral-strong relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
                 ].join(" ")}
+                onClick={() => {
+                  if (!canSendComment) return;
+                  sendComment();
+                }}
               >
                 {!isEmpty && (
                   <div className="absolute inset-0 rounded-orchid-pill border border-neutral bg-gradient-to-t from-surface to-surface shadow-xs transition-transform group-hover/button:to-surface-weak group-active/button:inset-shadow-xs group-active/button:shadow-none group-active/button:to-surface-subtle" />
                 )}
                 <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-ink">
-                  <span className="px-[2px]">Go</span>
+                  <span className="px-[2px]">{canSendComment ? "Comment" : "Go"}</span>
                   <span className="hidden h-4 items-center rounded border border-neutral bg-surface-weak px-1 text-[12px] leading-[17.6px] text-orchid-placeholder shadow-xs md:inline-flex">
                     ↵
                   </span>

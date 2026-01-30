@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Prompt } from "@/app/components/prompt";
 
@@ -14,6 +14,13 @@ function variantFromPathname(pathname: string): PromptVariant {
 export function PromptShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const variant = useMemo(() => variantFromPathname(pathname), [pathname]);
+  const isIssueDetailRoute =
+    pathname.startsWith("/issues/") && pathname.split("/").length === 3;
+  const issueIdForComment = useMemo(() => {
+    if (!isIssueDetailRoute) return null;
+    const parts = pathname.split("/");
+    return parts[2] ? decodeURIComponent(parts[2]) : null;
+  }, [isIssueDetailRoute, pathname]);
 
   const prevVariantRef = useRef<PromptVariant | null>(null);
   const [navState, setNavState] = useState<{
@@ -26,13 +33,13 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
   const lastPathRef = useRef<string | null>(null);
   const animationRef = useRef<Animation | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const prev = prevVariantRef.current;
     prevVariantRef.current = variant;
     if (!prev || prev === variant) return;
 
     const direction: NavDirection = variant === "issues" ? "toIssues" : "toHome";
-    setNavState({ active: true, direction });
+    queueMicrotask(() => setNavState({ active: true, direction }));
     const t = window.setTimeout(() => {
       setNavState({ active: false, direction: null });
     }, 600);
@@ -98,26 +105,42 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
     >
       {isIssues ? (
         <>
-          {/* Header spacing */}
-          <div className="relative w-full px-5 pt-4 md:pt-10">
-            <div className="relative z-20 mx-auto h-full">
-              <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-4" />
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="-mt-10 flex h-full min-h-0 flex-1 flex-col">
-            <div className="mx-auto min-h-0 w-full flex-1">
-              <div
-                className="min-h-0 h-full w-full overflow-y-auto px-5 pb-4 md:px-0"
-                style={{ scrollbarGutter: "stable both-edges" }}
-              >
-                <div className="mx-auto mt-16 max-w-2xl md:mt-20">
+          {/* Issues */}
+          {isIssueDetailRoute ? (
+            <div className="flex h-full min-h-0 flex-1 flex-col">
+              <div className="mx-auto min-h-0 w-full flex-1">
+                <div
+                  className="min-h-0 h-full w-full overflow-y-auto pb-4"
+                  style={{ scrollbarGutter: "stable both-edges" }}
+                >
                   {children}
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="relative w-full px-5 pt-4 md:pt-10">
+                <div className="relative z-20 mx-auto h-full">
+                  <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-4" />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="-mt-10 flex h-full min-h-0 flex-1 flex-col">
+                <div className="mx-auto min-h-0 w-full flex-1">
+                  <div
+                    className="min-h-0 h-full w-full overflow-y-auto px-5 pb-4 md:px-0"
+                    style={{ scrollbarGutter: "stable both-edges" }}
+                  >
+                    <div className="mx-auto mt-16 max-w-2xl md:mt-20">
+                      {children}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </>
       ) : (
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-6">
@@ -139,6 +162,7 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
           variant={variant}
           isNavigating={navState.active}
           navDirection={navState.direction}
+          issueIdForComment={issueIdForComment}
         />
       </div>
     </div>

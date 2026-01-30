@@ -134,6 +134,9 @@ function isItemActive(item: NavItem, pathname: string) {
 
 export function Navbar() {
   const pathname = usePathname();
+  const isIssueDetailRoute =
+    pathname.startsWith("/issues/") && pathname.split("/").length === 3;
+
   const activeHref = useMemo(() => {
     const activeItem = NAV_ITEMS.find((item) => isItemActive(item, pathname));
     return activeItem?.href ?? null;
@@ -153,6 +156,8 @@ export function Navbar() {
   const animationRef = useRef<Animation | null>(null);
 
   useLayoutEffect(() => {
+    if (isIssueDetailRoute) return;
+
     const navList = navListRef.current;
     const indicator = indicatorRef.current;
     if (!navList || !indicator) return;
@@ -229,7 +234,9 @@ export function Navbar() {
 
     lastIndicatorRef.current = next;
     lastPathRef.current = pathname;
-  }, [activeHref, pathname]);
+  }, [activeHref, pathname, isIssueDetailRoute]);
+
+  if (isIssueDetailRoute) return null;
 
   return (
     <nav
