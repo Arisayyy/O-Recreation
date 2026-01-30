@@ -10,13 +10,48 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Orchid prompt tokens */
+  --font-orchid-ui: Inter, ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-orchid-display: var(--font-playfair-display), ui-serif, Georgia, serif;
+
+  --color-orchid-ink: rgb(29, 33, 28);
+  --color-orchid-muted: rgb(96, 101, 95);
+  --color-orchid-placeholder: rgb(137, 142, 135);
+  --color-orchid-border: rgb(223, 226, 223);
+  --color-orchid-surface: rgb(239, 241, 239);
+  --color-orchid-surface-2: rgb(231, 233, 231);
+  --color-orchid-surface-3: rgb(248, 250, 248);
+
+  /* Suggestion chip aliases (match original Tailwind semantics) */
+  --color-surface: rgb(255, 255, 255);
+  --color-surface-weak: rgb(248, 250, 248);
+  --color-surface-subtle: rgb(231, 233, 231);
+  --color-neutral: rgb(223, 226, 223);
+  --color-neutral-strong: rgb(29, 33, 28);
+  --color-copy: rgb(29, 33, 28);
+
+  /* Match the reference chip shadow intensity */
+  --shadow-xs: 0 1px 1px 0 rgb(0 0 0 / 0.1);
+  --inset-shadow-xs: inset 0 1px 1px 0 rgb(0 0 0 / 0.1);
+
+  --radius-orchid-prompt-outer: 14px;
+  --radius-orchid-prompt-inner: 10px;
+  --radius-orchid-pill: 8px;
+  --radius-orchid-keycap: 4px;
+
+  --shadow-orchid-prompt: 0 0 10px 3px rgb(0 0 0 / 0.08);
+  --shadow-orchid-keycap: 0 1px 1px 0 rgb(0 0 0 / 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
