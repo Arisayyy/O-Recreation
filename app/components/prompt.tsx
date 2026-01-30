@@ -79,24 +79,24 @@ export function Prompt({
       </div>
 
       <div className="relative z-10">
+        {/* Composer */}
         <div
           data-orchid-flip="prompt-composer"
           className="bg-surface-subtle p-0.5 hover:ring-bg-surface-strong ease-out-expo w-full overflow-hidden rounded-[14px] transition-shadow duration-500 hover:ring-2"
         >
-          {/* Collapsed spacer block (kept to preserve original structure) */}
           <div className="grid overflow-hidden transition-all duration-500 ease-out-expo grid-rows-[0fr]">
             <div className="min-h-0">
               <div className="px-2 py-1 overflow-visible" />
             </div>
           </div>
 
+          {/* Input */}
           <div className="rounded-orchid-prompt-inner bg-white shadow-orchid-prompt">
             <div className="pl-[6px]">
               <div className="flex items-center pr-2">
                 <div
                   className="relative flex-1 cursor-text pl-[6px]"
                   onMouseDown={(e) => {
-                    // Make the whole area behave like a textbox click target.
                     e.preventDefault();
                     textareaRef.current?.focus();
                   }}
@@ -116,7 +116,7 @@ export function Prompt({
                       onChange={(e) => setValue(e.target.value)}
                     />
 
-                    {/* Overlay placeholder (matches original positioning + hide-on-focus behavior) */}
+                    {/* Placeholder */}
                     <div
                       className={[
                         "pointer-events-none absolute left-2 top-2",
@@ -132,13 +132,13 @@ export function Prompt({
               </div>
             </div>
 
-            {/* Collapsed sections (kept to preserve original structure) */}
             <div className="grid grid-rows-[0px] overflow-hidden transition-[transform,translate,scale,rotate] duration-300 ease-[cubic-bezier(0.19,1,0.22,1)]" />
             <div className="flex-1 overflow-auto" />
           </div>
 
           <input ref={fileInputRef} multiple type="file" className="hidden" />
 
+          {/* Actions */}
           <div className="flex items-center justify-between p-2">
             <div className="flex items-center gap-2">
               <button
@@ -278,6 +278,7 @@ export function Prompt({
           hideExtras ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
         ].join(" ")}
       >
+        {/* Suggestions */}
         <div
           className={[
             "min-h-0 transition-opacity duration-[600ms] ease-out-expo",

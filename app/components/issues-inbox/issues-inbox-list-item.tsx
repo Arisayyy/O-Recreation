@@ -1,19 +1,29 @@
 import { ReplyButton } from "./reply-button";
 import { DraftIcon } from "@/app/components/icons/draft-icon";
 import type { IssuesInboxItemModel } from "./types";
+import Link from "next/link";
 
 export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
+  const href = `/issues/${encodeURIComponent(item.id)}`;
+
   return (
     <div
       className={[
-        "bg-surface-subtle p-0.5 ease-out-expo w-full overflow-hidden",
-        // On /issues, hover should feel instant (no animation).
+        "relative bg-surface-subtle p-0.5 ease-out-expo w-full overflow-hidden cursor-pointer outline-none",
         "rounded-[14px] transition-none hover:ring-3 hover:ring-bg-surface-strong",
+        "focus-within:ring-3 focus-within:ring-bg-surface-strong",
       ].join(" ")}
     >
-      <div className="rounded-orchid-prompt-inner bg-white shadow-none">
+      {/* Card link */}
+      <Link
+        href={href}
+        aria-label={`Open issue ${item.id}`}
+        className="absolute inset-0 z-10 rounded-[14px] outline-none"
+      />
+
+      {/* Header */}
+      <div className="relative z-0 pointer-events-none rounded-orchid-prompt-inner bg-white shadow-none">
         <div className="flex flex-row gap-1 p-2">
-          {/* status dot (before subject) */}
           <div className="flex h-[25px] w-4 min-w-4 items-center justify-center">
             <div className="size-1 rounded-full bg-orchid-surface-2 transition-transform" />
           </div>
@@ -43,7 +53,8 @@ export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
         </div>
       </div>
 
-      <div className="rounded-xl">
+      {/* Draft preview + actions */}
+      <div className="relative z-0 pointer-events-none rounded-xl">
         <div className="space-y-2">
           <div className="flex items-center gap-3 px-1 py-1">
             <div className="flex min-w-0 flex-1 items-center gap-1.5 select-none px-1.5">
@@ -67,7 +78,7 @@ export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1 pointer-events-auto relative z-20">
               <ReplyButton label={item.ctaLabel} />
             </div>
           </div>

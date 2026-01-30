@@ -123,7 +123,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: inboxIcon,
     activeMatch: (p) => p === "/issues",
   },
-  // Kept from the original exported navbar for parity
   { href: "/mail/sent", label: "Sent", icon: sentIcon },
   { href: "/mail/completed", label: "Done", icon: doneIcon },
 ];
@@ -196,10 +195,8 @@ export function Navbar() {
     const prevPath = lastPathRef.current;
 
     if (prev && prevPath && prevPath !== pathname) {
-      // Cancel any in-flight animation before starting a new one.
       animationRef.current?.cancel();
 
-      // Apply the previous geometry synchronously to avoid a 1-frame pop.
       apply(prev);
       indicator.getBoundingClientRect();
 
@@ -249,7 +246,7 @@ export function Navbar() {
           </Link>
         </div>
 
-        {/* Primary nav */}
+        {/* Nav */}
         <div
           ref={navListRef}
           className="relative flex items-center justify-center gap-0.5"
@@ -297,7 +294,7 @@ export function Navbar() {
           })}
         </div>
 
-        {/* Right-side avatar/menu button (static visual) */}
+        {/* User menu */}
         <div className="flex flex-1 items-center justify-end gap-2">
           <button
             type="button"
@@ -306,7 +303,6 @@ export function Navbar() {
             className="inline-flex cursor-pointer rounded-full"
           >
             <span className="relative inline-flex items-center text-[14px] leading-[21px] text-orchid-ink">
-              {/* Hidden background layer (opacity 0 in exported CSS) */}
               <span className="absolute inset-1 rounded-full bg-orchid-surface-2 opacity-0" />
 
               <span className="relative z-10 p-1">

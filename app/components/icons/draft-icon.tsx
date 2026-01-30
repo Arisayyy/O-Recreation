@@ -10,7 +10,6 @@ export function DraftIcon() {
         "text-purple-600",
       ].join(" ")}
     >
-      {/* pencil/edit (draft) */}
       <path
         d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.848 2.047a.75.75 0 0 0 .98.98l2.047-.848a2.75 2.75 0 0 0 .892-.596l4.261-4.262a1.75 1.75 0 0 0 0-2.474Z"
         className="fill-purple-600"
