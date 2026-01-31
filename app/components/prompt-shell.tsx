@@ -155,7 +155,7 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
           </>
         ) : isChat ? (
           <div
-            className="h-screen flex-1 overflow-auto focus-visible:outline-hidden"
+            className="flex-1 min-h-0 focus-visible:outline-hidden"
             style={{
               scrollbarGutter: "stable",
               paddingLeft: "2.25rem",
@@ -163,8 +163,6 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
             }}
           >
             {children}
-            {/* Matches the reference spacer below the thread. */}
-            <div aria-hidden style={{ height: 164 }} />
           </div>
         ) : (
           <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-6">

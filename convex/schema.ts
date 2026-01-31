@@ -1,5 +1,6 @@
 import { defineSchema, type TableDefinition } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 import { schema } from "@trestleinc/replicate/server";
 
 const IssueStatus = v.union(
@@ -44,6 +45,7 @@ export const issueMessagesSchema = schema.define({
 });
 
 export default defineSchema({
+  ...authTables,
   issues: schema.table(
     {
       id: v.string(),

@@ -284,6 +284,21 @@ function insertTextAtCaret(text: string) {
   sel.addRange(next);
 }
 
+function setComposerPlainText(root: HTMLElement, text: string) {
+  // Replace all content (including mentions) with plain text.
+  root.innerHTML = "";
+  root.appendChild(document.createTextNode(text));
+
+  // Place caret at end.
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(root);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 export function Prompt({
   variant = "home",
   isNavigating = false,
@@ -317,7 +332,8 @@ export function Prompt({
     isNavigating && navDirection === "toIssues" ? "delay-[420ms]" : "delay-0";
 
   const canSendComment = variant === "issues" && !!issueIdForComment;
-  const canSendChatMessage = variant === "home" || variant === "chat";
+  const canSendChatMessage =
+    variant === "home" || variant === "chat" || (variant === "issues" && !issueIdForComment);
   const isThinking =
     canSendChatMessage && (chat.status === "submitted" || chat.status === "streaming");
 
@@ -399,6 +415,10 @@ export function Prompt({
 
   const sendChatMessage = () => {
     if (!canSendChatMessage) return;
+    // Don't allow sending while the assistant is generating a response.
+    // This is normally enforced by the disabled "Send" button, but we also guard
+    // here so keyboard shortcuts (Enter) can't bypass it.
+    if (chat.status !== "ready") return;
     if (isEmpty && pendingFiles.length === 0) return;
     if (isUploadingFiles) return;
 
@@ -408,7 +428,7 @@ export function Prompt({
       ...pendingFiles,
     ];
 
-    if (variant === "home") {
+    if (variant === "home" || variant === "issues") {
       chat.clear();
       void chat.sendMessage({ role: "user", parts });
       router.push("/chat");
@@ -658,6 +678,12 @@ export function Prompt({
                         // - Home/chat: Enter sends, Shift+Enter inserts a newline.
                         // - Comment mode: Enter sends, Shift+Enter inserts a newline.
                         if (e.key === "Enter") {
+                          // Let the browser handle Shift+Enter newline insertion for contentEditable.
+                          // (Our manual "\n" insertion was flaky on first press in some browsers.)
+                          if (e.shiftKey) {
+                            requestAnimationFrame(() => syncFromComposer());
+                            return;
+                          }
                           if (canSendComment && !e.shiftKey) {
                             e.preventDefault();
                             sendComment();
@@ -665,13 +691,17 @@ export function Prompt({
                           }
 
                           if (canSendChatMessage && !e.shiftKey) {
+                            // While the AI is generating, prevent Enter from sending another message.
+                            if (isThinking || chat.status !== "ready") {
+                              e.preventDefault();
+                              return;
+                            }
                             e.preventDefault();
                             sendChatMessage();
                             return;
                           }
 
-                          e.preventDefault();
-                          insertTextAtCaret("\n");
+                          // Fallback: allow default Enter behavior and sync after.
                           requestAnimationFrame(() => syncFromComposer());
                         }
                       }}
@@ -829,9 +859,15 @@ export function Prompt({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={(isEmpty && pendingFiles.length === 0) || isUploadingFiles || chat.status !== "ready"}
+                disabled={
+                  (!canSendComment && !canSendChatMessage) ||
+                  ((isEmpty && pendingFiles.length === 0) || isUploadingFiles || chat.status !== "ready")
+                }
                 className={[
-                  (isEmpty && pendingFiles.length === 0) || isUploadingFiles || chat.status !== "ready"
+                  (!canSendComment && !canSendChatMessage) ||
+                  (isEmpty && pendingFiles.length === 0) ||
+                  isUploadingFiles ||
+                  chat.status !== "ready"
                     ? "relative inline-flex h-7 flex-none cursor-not-allowed items-center rounded-orchid-pill px-1.5 py-0 opacity-50"
                     : "group/button focus-visible:ring-neutral-strong relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
                 ].join(" ")}
@@ -854,11 +890,7 @@ export function Prompt({
                       ? "Uploading…"
                       : canSendComment
                         ? "Comment"
-                        : canSendChatMessage
-                          ? chat.status === "streaming" || chat.status === "submitted"
-                            ? "Sending…"
-                            : "Send"
-                          : "Go"}
+                        : "Go"}
                   </span>
                   <span className="hidden h-4 items-center rounded border border-neutral bg-surface-weak px-1 text-[12px] leading-[17.6px] text-orchid-placeholder shadow-xs md:inline-flex">
                     ↵
@@ -913,6 +945,15 @@ export function Prompt({
                   "relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5",
                   "whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
                 ].join(" ")}
+                onClick={() => {
+                  const root = composerRef.current;
+                  if (!root) return;
+                  setComposerPlainText(root, label);
+                  setDismissedAtIndex(null);
+                  setActiveConnectionIndex(0);
+                  root.focus();
+                  requestAnimationFrame(() => syncFromComposer());
+                }}
               >
                 <div
                   className={[
