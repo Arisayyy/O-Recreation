@@ -14,7 +14,6 @@ import type { LexicalEditor, LexicalNode } from "lexical";
 import { MenuDropdown } from "@/app/components/menu-dropdown";
 import {
   $createParagraphNode,
-  $createTextNode,
   $getRoot,
   $getSelection,
   $isRangeSelection,
@@ -872,15 +871,34 @@ function ComposerToolbar({
 export function IssueReplyComposer({
   open,
   issueId,
+  onCloseAction,
 }: {
   open: boolean;
   issueId: string;
+  onCloseAction?: () => void;
 }) {
   const [isEditorEmpty, setIsEditorEmpty] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const editorRef = useRef<LexicalEditor | null>(null);
   const [fileInputEl, setFileInputEl] = useState<HTMLInputElement | null>(null);
+
+  const discardDraft = useCallback(() => {
+    if (isUploading) return;
+
+    const editor = editorRef.current;
+    if (editor) {
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        root.append($createParagraphNode());
+      });
+    }
+
+    setUploadError(null);
+    setIsEditorEmpty(true);
+    onCloseAction?.();
+  }, [isUploading, onCloseAction]);
 
   const sendReply = useCallback(() => {
     if (isUploading) return;
@@ -1130,8 +1148,13 @@ export function IssueReplyComposer({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              aria-label="Discard (not implemented)"
-              className={hoverActionButtonClass()}
+              aria-label="Discard"
+              className={[
+                hoverActionButtonClass(),
+                isUploading ? "pointer-events-none cursor-not-allowed opacity-50" : "",
+              ].join(" ")}
+              disabled={isUploading}
+              onClick={discardDraft}
             >
               <div aria-hidden="true" className={hoverActionButtonBgClass()} />
               <div className="relative z-10 flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">

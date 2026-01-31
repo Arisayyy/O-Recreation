@@ -25,6 +25,18 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
   const spacerRef = useRef<HTMLDivElement | null>(null);
   const lastSpacerHeightRef = useRef<number>(0);
 
+  const openReply = useCallback(() => {
+    setIsReplyOpen(true);
+    // Scroll the composer into view (focus happens inside the composer).
+    window.setTimeout(() => {
+      replyWrapperRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, 0);
+  }, []);
+
+  const closeReply = useCallback(() => {
+    setIsReplyOpen(false);
+  }, []);
+
   const { data: issueList, isLoading: issuesLoading, isError: issuesError } =
     useLiveQuery(issues);
   const {
@@ -280,16 +292,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
 
   return (
     <div className="font-orchid-ui leading-6">
-      <IssueDetailHeader
-        title={issue.title}
-        onReply={() => {
-          setIsReplyOpen(true);
-          // Scroll the composer into view (focus happens inside the composer).
-          window.setTimeout(() => {
-            replyWrapperRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-          }, 0);
-        }}
-      />
+      <IssueDetailHeader title={issue.title} onReply={openReply} />
 
       <div
         className="mx-auto w-full max-w-2xl px-5 pb-8 md:px-0"
@@ -330,6 +333,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
                     body: item.body,
                     attachments: [],
                   }}
+                  onReplyAction={openReply}
                 />
               </div>
             );
@@ -341,6 +345,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
           <IssueReplyComposer
             open={isReplyOpen}
             issueId={issueId}
+            onCloseAction={closeReply}
           />
         </div>
 

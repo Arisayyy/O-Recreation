@@ -40,14 +40,22 @@ export function AltNavbar({
   const navRef = useRef<HTMLElement | null>(null);
   const [navHeight, setNavHeight] = useState(0);
 
+  const handleClose = React.useCallback(() => {
+    if (onCloseAction) {
+      onCloseAction();
+      return;
+    }
+    router.push(closeHref);
+  }, [closeHref, onCloseAction, router]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      onCloseAction?.() ?? router.push(closeHref);
+      handleClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeHref, onCloseAction, router]);
+  }, [handleClose]);
 
   useLayoutEffect(() => {
     if (layout !== "sticky") return;
@@ -88,7 +96,7 @@ export function AltNavbar({
             <button
               type="button"
               className={[semiGhostButtonBaseClass, "px-[6px]"].join(" ")}
-              onClick={() => onCloseAction?.() ?? router.push(closeHref)}
+              onClick={handleClose}
             >
               <div className={semiGhostButtonBgClass} />
               <div className={semiGhostButtonInnerClass + " pointer-events-none"}>

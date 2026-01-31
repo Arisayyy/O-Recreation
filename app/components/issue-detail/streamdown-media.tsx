@@ -45,10 +45,14 @@ function cn(...values: Array<string | null | undefined | false>): string {
 // Avoid Streamdown's default image wrapper that can place <div> inside <p>,
 // which triggers hydration warnings in Next.js.
 export function StreamdownImage(props: React.ComponentPropsWithoutRef<"img"> & { node?: unknown }) {
+  // Streamdown passes a `node` prop (not valid on <img>). We destructure it away.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { node: _node, className, ...rest } = props;
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       {...rest}
+      alt={rest.alt ?? ""}
       className={cn("max-w-full rounded-lg", className)}
       loading={rest.loading ?? "lazy"}
       decoding={rest.decoding ?? "async"}

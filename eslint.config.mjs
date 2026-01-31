@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     // Project-specific:
+    "convex/_generated/**",
     "reference/**",
     "reference.tsx",
   ]),

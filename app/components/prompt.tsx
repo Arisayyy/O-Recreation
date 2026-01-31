@@ -267,25 +267,6 @@ function serializeComposer(root: HTMLElement): string {
   return out;
 }
 
-function insertTextAtCaret(text: string) {
-  if (typeof window === "undefined") return;
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return;
-
-  const range = sel.getRangeAt(0);
-  range.deleteContents();
-
-  const node = document.createTextNode(text);
-  range.insertNode(node);
-
-  // Move caret to end of inserted text node.
-  const next = document.createRange();
-  next.setStart(node, node.data.length);
-  next.collapse(true);
-  sel.removeAllRanges();
-  sel.addRange(next);
-}
-
 function setComposerPlainText(root: HTMLElement, text: string) {
   // Replace all content (including mentions) with plain text.
   root.innerHTML = "";

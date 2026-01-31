@@ -1,20 +1,26 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import type { IssueThreadMessageModel } from "./types";
 import { Streamdown } from "streamdown";
 import { streamdownComponents, streamdownRehypePlugins } from "./streamdown-media";
 import { AvatarMarble } from "@/app/components/avatar-marble";
+import { IssuePostMenu } from "@/app/components/issue-detail/issue-post-menu";
 
 function SquareHoverButton({
   children,
   ariaLabel,
+  onClick,
 }: {
   children: React.ReactNode;
   ariaLabel: string;
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
       aria-label={ariaLabel}
+      onClick={onClick}
       className={[
         "group/button focus-visible:ring-neutral-strong",
         "relative inline-flex shrink-0 cursor-pointer",
@@ -58,9 +64,16 @@ function FileIcon() {
   );
 }
 
-export function IssueThreadMessage({ message }: { message: IssueThreadMessageModel }) {
+export function IssueThreadMessage({
+  message,
+  onReplyAction,
+}: {
+  message: IssueThreadMessageModel;
+  onReplyAction?: () => void;
+}) {
   const attachments = message.attachments ?? [];
   const attachmentCount = attachments.length;
+  const [isPostMenuOpen, setIsPostMenuOpen] = useState(false);
 
   return (
     <div className="bg-surface-subtle group flex w-full flex-col gap-0.5 overflow-hidden rounded-xl p-0.5">
@@ -112,15 +125,27 @@ export function IssueThreadMessage({ message }: { message: IssueThreadMessageMod
 
           <div className="relative flex items-center gap-3">
             {/* Time label (slides out on hover) */}
-            <div className="ease-out-expo absolute right-0 top-1 flex items-center gap-2 px-2 transition-transform duration-200 group-hover:-translate-x-1 group-hover:opacity-0">
+            <div
+              className={[
+                "ease-out-expo absolute right-0 top-1 flex items-center gap-2 px-2 transition-transform duration-200",
+                isPostMenuOpen ? "opacity-0 -translate-x-1" : "group-hover:opacity-0 group-hover:-translate-x-1",
+              ].join(" ")}
+            >
               <span className="whitespace-nowrap text-[12px] leading-[17.6px] text-orchid-muted">
                 {message.timeLabel}
               </span>
             </div>
 
             {/* Action buttons (slide in on hover) */}
-            <div className="ease-out-expo flex translate-x-1 items-center gap-1 opacity-0 transition-transform duration-200 group-hover:translate-x-0 group-hover:opacity-100">
-              <SquareHoverButton ariaLabel="Reply">
+            <div
+              className={[
+                "ease-out-expo flex items-center gap-1 transition-transform duration-200",
+                isPostMenuOpen
+                  ? "translate-x-0 opacity-100"
+                  : "translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100",
+              ].join(" ")}
+            >
+              <SquareHoverButton ariaLabel="Reply" onClick={onReplyAction}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 16 16"
@@ -135,17 +160,19 @@ export function IssueThreadMessage({ message }: { message: IssueThreadMessageMod
                   />
                 </svg>
               </SquareHoverButton>
-              <SquareHoverButton ariaLabel="More">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  className="size-4 transition-transform"
-                >
-                  <path d="M2 8a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM6.5 8a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM12.5 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" />
-                </svg>
-              </SquareHoverButton>
+              <IssuePostMenu
+                align="end"
+                onOpenChangeAction={setIsPostMenuOpen}
+                onDoneAction={() => {
+                  // TODO: wire to real state / API.
+                }}
+                onForwardAction={() => {
+                  // TODO: wire to real state / API.
+                }}
+                onDeleteAction={() => {
+                  // TODO: wire to real state / API.
+                }}
+              />
             </div>
           </div>
         </div>

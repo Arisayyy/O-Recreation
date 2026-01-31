@@ -80,6 +80,7 @@ export class MediaNode extends DecoratorNode<React.ReactNode> {
     }
 
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={this.__src}
         alt={this.__alt}

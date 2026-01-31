@@ -1,4 +1,3 @@
-/* eslint-disable react/no-danger */
 import React from "react";
 
 const __css = `*,*::before,*::after{box-sizing:border-box;border-width:0;border-style:solid;border-color:currentColor;}
