@@ -1,4 +1,4 @@
-import { IssueDetailClient } from "@/app/components/issue-detail/issue-detail-client";
+import { IssueDetailClient } from "@/app/components/issue-detail";
 
 export default async function IssuePage({
   params,

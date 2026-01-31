@@ -4,10 +4,10 @@ import React, { useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { issueMessages as issueMessagesCollection } from "@/app/collections/issueMessages";
-import { IssueDetailHeader } from "@/app/components/issue-detail/issue-detail-header";
-import { IssueThreadMessage } from "@/app/components/issue-detail/issue-thread-message";
-import { IssueReplyComposer } from "@/app/components/issue-detail/issue-reply-composer";
-import { IssueComment } from "@/app/components/issue-detail/issue-comment";
+import { IssueDetailHeader } from "./header";
+import { IssueThreadMessage } from "./thread-message";
+import { IssueReplyComposer } from "./reply-composer";
+import { IssueComment } from "./comment";
 import { formatRelativeTime } from "@/app/lib/relative-time";
 
 export function IssueDetailClient({ issueId }: { issueId: string }) {

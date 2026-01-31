@@ -1,7 +1,7 @@
 "use client";
 
 import { useLiveQuery } from "@tanstack/react-db";
-import { IssuesInboxListItem } from "./issues-inbox-list-item";
+import { IssuesInboxListItem } from "./list-item";
 import type { IssuesInboxItemModel } from "./types";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
