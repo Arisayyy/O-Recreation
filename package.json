@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "bun --bun next dev", 
+    "build": "bun --bun next build", 
+    "start": "bun --bun next start", 
     "lint": "eslint"
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "@tanstack/db": "^0.5.25",
     "@tanstack/react-db": "^0.1.69",
     "@trestleinc/replicate": "v2.0.0-preview.0",
+    "ai": "^6.0.64",
     "convex": "^1.31.7",
     "i": "^0.3.7",
     "lexical": "^0.39.0",

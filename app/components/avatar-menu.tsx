@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Menu } from "@base-ui/react/menu";
 import { BugIcon } from "@/app/components/icons/bug-icon";
 import { LogoutIcon } from "@/app/components/icons/logout-icon";
@@ -9,10 +9,13 @@ import { MonitorIcon } from "@/app/components/icons/monitor-icon";
 import { MoonIcon } from "@/app/components/icons/moon-icon";
 import { SettingsIcon } from "@/app/components/icons/settings-icon";
 import { SunIcon } from "@/app/components/icons/sun-icon";
+import { SettingsDialog } from "@/app/components/settings-dialog";
+import { BugReportDialog } from "@/app/components/bug-report-dialog";
 
 type ThemePreference = "system" | "light" | "dark";
 
 const THEME_STORAGE_KEY = "orchid:theme";
+const THEME_CHANGE_EVENT = "orchid:theme-change";
 
 function applyThemePreference(pref: ThemePreference) {
   if (typeof document === "undefined") return;
@@ -97,18 +100,35 @@ export function AvatarMenu({
   avatarInitial?: string;
   align?: "start" | "center" | "end";
 }) {
-  const [theme, setTheme] = useState<ThemePreference>("system");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [bugOpen, setBugOpen] = useState(false);
+
+  const theme = useSyncExternalStore<ThemePreference>(
+    (onStoreChange) => {
+      if (typeof window === "undefined") return () => {};
+      const cb = () => onStoreChange();
+      window.addEventListener("storage", cb);
+      window.addEventListener(THEME_CHANGE_EVENT, cb);
+      return () => {
+        window.removeEventListener("storage", cb);
+        window.removeEventListener(THEME_CHANGE_EVENT, cb);
+      };
+    },
+    () => getStoredThemePreference() ?? "system",
+    () => "system",
+  );
 
   useEffect(() => {
-    const stored = getStoredThemePreference();
-    if (stored) setTheme(stored);
-    applyThemePreference(stored ?? "system");
-  }, []);
-
-  useEffect(() => {
-    setStoredThemePreference(theme);
     applyThemePreference(theme);
   }, [theme]);
+
+  const setThemePreference = (pref: ThemePreference) => {
+    setStoredThemePreference(pref);
+    applyThemePreference(pref);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+    }
+  };
 
   const themeIndex = useMemo(() => {
     if (theme === "system") return 0;
@@ -117,110 +137,125 @@ export function AvatarMenu({
   }, [theme]);
 
   return (
-    <Menu.Root>
-      <Menu.Trigger className="inline-flex cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-orchid-border">
-        <span className="relative inline-flex items-center text-[14px] leading-[21px] text-orchid-ink">
-          <span className="absolute inset-1 rounded-full bg-orchid-surface-2 opacity-0" />
+    <>
+      <Menu.Root>
+        <Menu.Trigger className="inline-flex cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-orchid-border">
+          <span className="relative inline-flex items-center text-[14px] leading-[21px] text-orchid-ink">
+            <span className="absolute inset-1 rounded-full bg-orchid-surface-2 opacity-0" />
 
-          <span className="relative z-10 p-1">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orchid-border bg-white text-[10px] font-semibold leading-[15px] text-orchid-ink">
-              {avatarInitial}
+            <span className="relative z-10 p-1">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orchid-border bg-white text-[10px] font-semibold leading-[15px] text-orchid-ink">
+                {avatarInitial}
+              </span>
             </span>
           </span>
-        </span>
-      </Menu.Trigger>
+        </Menu.Trigger>
 
-      <Menu.Portal>
-        <Menu.Positioner side="bottom" align={align} className="z-80">
-          <Menu.Popup className="group outline-none">
-            <div className={menuPanelClassName()}>
-              <div className="hide-scrollbar flex max-h-72 flex-col gap-0.5 overflow-auto select-none [--lh:1lh]">
-                <Menu.Item className="group/zhover outline-none" onClick={() => window.alert("TODO: send a test email")}>
-                  <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
-                    <MenuRow icon={<MailIcon className="size-4" />} label="Send Test Email" />
-                  </button>
-                </Menu.Item>
-
-                <Menu.Item className="group/zhover outline-none" onClick={() => window.alert("TODO: report a bug")}>
-                  <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
-                    <MenuRow icon={<BugIcon className="size-4" />} label="Report Bug" />
-                  </button>
-                </Menu.Item>
-
-                <Menu.Separator className="border-neutral border-t" />
-
-                <Menu.Item className="group/zhover outline-none" onClick={() => window.alert("TODO: open settings")}>
-                  <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
-                    <MenuRow icon={<SettingsIcon className="size-4" />} label="Settings" />
-                  </button>
-                </Menu.Item>
-
-                <Menu.Item
-                  className="group/zhover outline-none"
-                  onClick={() => {
-                    try {
-                      window.localStorage.removeItem("orchid:deviceId");
-                    } catch {
-                      // ignore
-                    }
-                    window.location.reload();
-                  }}
-                >
-                  <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
-                    <MenuRow icon={<LogoutIcon className="size-4" />} label="Logout" />
-                  </button>
-                </Menu.Item>
-
-                <Menu.Separator className="border-neutral border-t" />
-
-                <div className="rounded-lg p-0.5">
-                  <div className="relative grid grid-cols-3 rounded-full">
-                    <div
-                      aria-hidden="true"
-                      className="absolute inset-y-0 left-0 m-0.5 h-7 w-1/3 rounded-md bg-surface-subtle transition-transform duration-150 ease-in-out"
-                      style={{ transform: `translateX(${themeIndex * 100}%)` }}
-                    />
-
-                    <button
-                      type="button"
-                      className={[
-                        "relative z-10 flex h-7 items-center justify-center rounded-md border-2 border-transparent p-0 leading-none",
-                        theme === "system" ? "text-orchid-ink" : "text-orchid-muted",
-                      ].join(" ")}
-                      onClick={() => setTheme("system")}
-                    >
-                      <MonitorIcon className="size-4 block translate-y-[1.75px]" />
+        <Menu.Portal>
+          <Menu.Positioner side="bottom" align={align} className="z-80">
+            <Menu.Popup className="group outline-none">
+              <div className={menuPanelClassName()}>
+                <div className="hide-scrollbar flex max-h-72 flex-col gap-0.5 overflow-auto select-none [--lh:1lh]">
+                  <Menu.Item className="group/zhover outline-none">
+                    <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
+                      <MenuRow icon={<MailIcon className="size-4" />} label="Send Test Email" />
                     </button>
+                  </Menu.Item>
 
-                    <button
-                      type="button"
-                      className={[
-                        "relative z-10 flex h-7 items-center justify-center rounded-md border-2 border-transparent p-0 leading-none",
-                        theme === "light" ? "text-orchid-ink" : "text-orchid-muted",
-                      ].join(" ")}
-                      onClick={() => setTheme("light")}
-                    >
-                      <SunIcon className="size-4 block translate-y-[1.75px]" />
+                  <Menu.Item
+                    className="group/zhover outline-none"
+                    onClick={() => {
+                      setBugOpen(true);
+                    }}
+                  >
+                    <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
+                      <MenuRow icon={<BugIcon className="size-4" />} label="Report Bug" />
                     </button>
+                  </Menu.Item>
 
-                    <button
-                      type="button"
-                      className={[
-                        "relative z-10 flex h-7 items-center justify-center rounded-md border-2 border-transparent p-0 leading-none",
-                        theme === "dark" ? "text-orchid-ink" : "text-orchid-muted",
-                      ].join(" ")}
-                      onClick={() => setTheme("dark")}
-                    >
-                      <MoonIcon className="size-4 block translate-y-[1.75px]" />
+                  <Menu.Separator className="border-neutral border-t" />
+
+                  <Menu.Item
+                    className="group/zhover outline-none"
+                    onClick={() => {
+                      setSettingsOpen(true);
+                    }}
+                  >
+                    <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
+                      <MenuRow icon={<SettingsIcon className="size-4" />} label="Settings" />
                     </button>
+                  </Menu.Item>
+
+                  <Menu.Item
+                    className="group/zhover outline-none"
+                    onClick={() => {
+                      try {
+                        window.localStorage.removeItem("orchid:deviceId");
+                      } catch {
+                        // ignore
+                      }
+                      window.location.reload();
+                    }}
+                  >
+                    <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
+                      <MenuRow icon={<LogoutIcon className="size-4" />} label="Logout" />
+                    </button>
+                  </Menu.Item>
+
+                  <Menu.Separator className="border-neutral border-t" />
+
+                  <div className="rounded-lg p-0.5">
+                    <div className="relative grid grid-cols-3 rounded-full">
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-y-0 left-0 m-0.5 h-7 w-1/3 rounded-md bg-surface-subtle transition-transform duration-150 ease-in-out"
+                        style={{ transform: `translateX(${themeIndex * 100}%)` }}
+                      />
+
+                      <button
+                        type="button"
+                        className={[
+                          "relative z-10 flex h-7 items-center justify-center rounded-md border-2 border-transparent p-0 leading-none",
+                          theme === "system" ? "text-orchid-ink" : "text-orchid-muted",
+                        ].join(" ")}
+                      onClick={() => setThemePreference("system")}
+                      >
+                        <MonitorIcon className="size-4 block translate-y-[1.75px]" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className={[
+                          "relative z-10 flex h-7 items-center justify-center rounded-md border-2 border-transparent p-0 leading-none",
+                          theme === "light" ? "text-orchid-ink" : "text-orchid-muted",
+                        ].join(" ")}
+                      onClick={() => setThemePreference("light")}
+                      >
+                        <SunIcon className="size-4 block translate-y-[1.75px]" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className={[
+                          "relative z-10 flex h-7 items-center justify-center rounded-md border-2 border-transparent p-0 leading-none",
+                          theme === "dark" ? "text-orchid-ink" : "text-orchid-muted",
+                        ].join(" ")}
+                      onClick={() => setThemePreference("dark")}
+                      >
+                        <MoonIcon className="size-4 block translate-y-[1.75px]" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+
+      <SettingsDialog open={settingsOpen} onOpenChangeAction={setSettingsOpen} />
+      <BugReportDialog open={bugOpen} onOpenChangeAction={setBugOpen} />
+    </>
   );
 }
 

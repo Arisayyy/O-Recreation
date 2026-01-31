@@ -7,6 +7,8 @@ import { Keycap } from "@/app/components/issue-detail/keycap";
 import { issueMessages } from "@/app/collections/issueMessages";
 import { issues, type Issue } from "@/app/collections/issues";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
+import { uploadToUploadsRoute } from "@/app/lib/uploads";
+import { $createMediaNode, MEDIA_MARKDOWN_TRANSFORMER, MediaNode } from "./lexical-media";
 import { Dialog } from "@base-ui/react/dialog";
 import type { LexicalEditor, LexicalNode } from "lexical";
 import { MenuDropdown } from "@/app/components/menu-dropdown";
@@ -46,6 +48,8 @@ import { CodeNode } from "@lexical/code";
 import { $setBlocksType } from "@lexical/selection";
 import { TRANSFORMERS, $convertToMarkdownString } from "@lexical/markdown";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+
+const COMPOSER_TRANSFORMERS = [...TRANSFORMERS, MEDIA_MARKDOWN_TRANSFORMER];
 
 function hoverActionButtonClass() {
   return [
@@ -123,14 +127,26 @@ function SendOnCtrlEnterPlugin({ onSend }: { onSend: () => void }) {
   return null;
 }
 
-function ComposerToolbar() {
+function ComposerToolbar({
+  issueId,
+  uploading,
+  setUploading,
+  setUploadError,
+  onFileInputEl,
+}: {
+  issueId: string;
+  uploading: boolean;
+  setUploading: (v: boolean) => void;
+  setUploadError: (v: string | null) => void;
+  onFileInputEl: (el: HTMLInputElement | null) => void;
+}) {
   const [editor] = useLexicalComposerContext();
   const [blockType, setBlockType] = useState<
     "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
   >("paragraph");
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const [imageInputEl, setImageInputEl] = useState<HTMLInputElement | null>(null);
+  const [fileInputEl, _setFileInputEl] = useState<HTMLInputElement | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkDialogMode, setLinkDialogMode] = useState<"noSelection" | "withSelection">(
     "noSelection",
@@ -145,7 +161,15 @@ function ComposerToolbar() {
         if (!$isRangeSelection(selection)) return;
 
         const anchorNode = selection.anchor.getNode();
-        const element = anchorNode.getTopLevelElementOrThrow?.() ?? anchorNode;
+        let element: LexicalNode = anchorNode;
+        if (typeof anchorNode.getTopLevelElementOrThrow === "function") {
+          try {
+            element = anchorNode.getTopLevelElementOrThrow();
+          } catch {
+            // Lexical can throw here when selection is at the root; treat as paragraph.
+            element = anchorNode;
+          }
+        }
 
         if ($isHeadingNode(element)) {
           const tag = element.getTag();
@@ -331,37 +355,80 @@ function ComposerToolbar() {
     setLinkDialogOpen(true);
   }, [editor]);
 
-  const onImageClick = useCallback(() => {
-    imageInputEl?.click();
-  }, [imageInputEl]);
+  const setFileInputEl = useCallback(
+    (el: HTMLInputElement | null) => {
+      _setFileInputEl(el);
+      onFileInputEl(el);
+    },
+    [onFileInputEl],
+  );
 
-  const onImageChosen = useCallback(
-    async (file: File) => {
-      const MAX_IMAGE_BYTES = 400_000; // keep inline markdown payloads reasonably small for now
-      if (file.size > MAX_IMAGE_BYTES) {
-        window.alert("That image is too large for inline insertion. Please pick a smaller file.");
-        return;
+  const onPickFilesClick = useCallback(() => {
+    if (uploading) return;
+    fileInputEl?.click();
+  }, [fileInputEl, uploading]);
+
+  const onFilesChosen = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return;
+      if (uploading) return;
+
+      const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20MB
+      const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB
+
+      for (const file of files) {
+        if (file.type.startsWith("image/") && file.size > MAX_IMAGE_BYTES) {
+          window.alert(`"${file.name}" is too large (max 20MB for images).`);
+          return;
+        }
+        if (file.type.startsWith("video/") && file.size > MAX_VIDEO_BYTES) {
+          window.alert(`"${file.name}" is too large (max 100MB for videos).`);
+          return;
+        }
       }
 
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error("Failed to read image"));
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.readAsDataURL(file);
-      });
+      setUploadError(null);
+      setUploading(true);
+      try {
+        const prefix = `issues/${issueId}/replies/`;
+        const uploaded = await Promise.all(
+          files.map(async (file) => {
+            const result = await uploadToUploadsRoute({ file, prefix });
+            if (!result.publicUrl) {
+              throw new Error(
+                'Upload succeeded but publicUrl is not configured. Set R2_PUBLIC_BASE_URL or NEXT_PUBLIC_R2_PUBLIC_BASE_URL.',
+              );
+            }
+            return { file, url: result.publicUrl };
+          }),
+        );
 
-      editor.update(() => {
-        const selection = $getSelection();
-        const md = `![${file.name}](${dataUrl})`;
-        if ($isRangeSelection(selection)) {
-          selection.insertText(md);
-        } else {
-          $getRoot().append($createParagraphNode().append($createTextNode(md)));
-        }
-      });
-      editor.focus();
+        editor.update(() => {
+          const selection = $getSelection();
+          const nodes = uploaded.map(({ file, url }) => {
+            const kind = file.type.startsWith("video/") ? "video" : "image";
+            return $createMediaNode(url, file.name, kind);
+          });
+
+          if ($isRangeSelection(selection)) {
+            selection.insertNodes(nodes);
+          } else {
+            const root = $getRoot();
+            for (const node of nodes) {
+              root.append($createParagraphNode().append(node));
+            }
+          }
+        });
+        editor.focus();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        setUploadError(message);
+        window.alert(message);
+      } finally {
+        setUploading(false);
+      }
     },
-    [editor],
+    [editor, issueId, setUploadError, setUploading, uploading],
   );
 
   return (
@@ -514,13 +581,15 @@ function ComposerToolbar() {
 
         <button
           type="button"
-          aria-label="image"
+          aria-label="upload media"
+          disabled={uploading}
           className={[
             "group/button focus-visible:ring-neutral-strong",
             "relative inline-flex shrink-0 cursor-pointer rounded-lg whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2",
             "size-7 min-w-7 min-h-7",
+            uploading ? "pointer-events-none cursor-not-allowed opacity-50" : "",
           ].join(" ")}
-          onClick={onImageClick}
+          onClick={onPickFilesClick}
         >
           <div aria-hidden="true" className={hoverActionButtonBgClass()} />
           <div className="relative z-10 flex w-full items-center justify-center text-orchid-muted group-hover/button:text-orchid-ink">
@@ -631,15 +700,16 @@ function ComposerToolbar() {
 
         {/* Hidden image input */}
         <input
-          ref={setImageInputEl}
-          accept="image/*"
+          ref={setFileInputEl}
+          accept="image/*,video/*"
           type="file"
           className="hidden"
+          multiple
           onChange={(e) => {
-            const file = e.currentTarget.files?.[0];
+            const files = Array.from(e.currentTarget.files ?? []);
             e.currentTarget.value = "";
-            if (!file) return;
-            void onImageChosen(file);
+            if (files.length === 0) return;
+            void onFilesChosen(files);
           }}
         />
       </div>
@@ -807,15 +877,19 @@ export function IssueReplyComposer({
   issueId: string;
 }) {
   const [isEditorEmpty, setIsEditorEmpty] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const editorRef = useRef<LexicalEditor | null>(null);
+  const [fileInputEl, setFileInputEl] = useState<HTMLInputElement | null>(null);
 
   const sendReply = useCallback(() => {
+    if (isUploading) return;
     const editor = editorRef.current;
     if (!editor) return;
 
     let markdown = "";
     editor.getEditorState().read(() => {
-      markdown = $convertToMarkdownString(TRANSFORMERS);
+      markdown = $convertToMarkdownString(COMPOSER_TRANSFORMERS);
     });
 
     const body = markdown.trim();
@@ -849,12 +923,12 @@ export function IssueReplyComposer({
     });
     editor.focus();
     setIsEditorEmpty(true);
-  }, [issueId]);
+  }, [isUploading, issueId]);
 
   const initialConfig = useMemo(
     () => ({
       namespace: `issue-reply:${issueId}`,
-      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, CodeNode],
+      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, CodeNode, MediaNode],
       onError: (e: Error) => {
         throw e;
       },
@@ -966,17 +1040,22 @@ export function IssueReplyComposer({
               <HistoryPlugin />
               <ListPlugin />
               <LinkPlugin />
-              <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+              <MarkdownShortcutPlugin transformers={COMPOSER_TRANSFORMERS} />
 
-              <ComposerToolbar />
+              <ComposerToolbar
+                issueId={issueId}
+                uploading={isUploading}
+                setUploading={setIsUploading}
+                setUploadError={setUploadError}
+                onFileInputEl={setFileInputEl}
+              />
 
               <SendOnCtrlEnterPlugin onSend={sendReply} />
               <OnChangePlugin
                 onChange={(editorState) => {
                   editorState.read(() => {
-                    const root = $getRoot();
-                    const next = root.getTextContent().trim();
-                    setIsEditorEmpty(next.length === 0);
+                    const markdown = $convertToMarkdownString(COMPOSER_TRANSFORMERS).trim();
+                    setIsEditorEmpty(markdown.length === 0);
                   });
                 }}
               />
@@ -1025,17 +1104,27 @@ export function IssueReplyComposer({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              aria-label="Attach files (not implemented)"
+              aria-label="Attach files"
               className={hoverActionButtonClass()}
+              disabled={isUploading}
+              onClick={() => {
+                if (isUploading) return;
+                fileInputEl?.click();
+              }}
             >
               <div aria-hidden="true" className={hoverActionButtonBgClass()} />
               <div className="relative z-10 flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
                 <PaperclipIcon />
                 <div className="px-0.5 leading-none transition-transform">
-                  Attach files
+                  {isUploading ? "Uploading…" : "Attach files"}
                 </div>
               </div>
             </button>
+            {uploadError ? (
+              <div className="text-[12px] leading-[17.6px] text-red-600 dark:text-red-400">
+                {uploadError}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">
@@ -1061,7 +1150,7 @@ export function IssueReplyComposer({
                 "relative inline-flex shrink-0 cursor-pointer",
                 "rounded-lg whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2",
                 "h-7 px-1.5",
-                isEditorEmpty ? "opacity-50 pointer-events-none cursor-not-allowed" : "",
+                isEditorEmpty || isUploading ? "opacity-50 pointer-events-none cursor-not-allowed" : "",
               ].join(" ")}
               onClick={() => sendReply()}
             >

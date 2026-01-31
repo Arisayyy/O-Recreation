@@ -1,6 +1,7 @@
 import React from "react";
 import type { IssueThreadMessageModel } from "./types";
 import { Streamdown } from "streamdown";
+import { streamdownComponents, streamdownRehypePlugins } from "./streamdown-media";
 
 function SquareHoverButton({
   children,
@@ -157,7 +158,13 @@ export function IssueThreadMessage({ message }: { message: IssueThreadMessageMod
             >
               <div role="presentation" style={{ minWidth: "fit-content" }}>
                 <div className="prose w-full max-w-none rounded-md m-0 p-0 text-orchid-ink">
-                  <Streamdown mode="static">{message.body}</Streamdown>
+                  <Streamdown
+                    mode="static"
+                    rehypePlugins={streamdownRehypePlugins}
+                    components={streamdownComponents}
+                  >
+                    {message.body}
+                  </Streamdown>
                 </div>
               </div>
             </div>

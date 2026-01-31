@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Streamdown } from "streamdown";
+import { streamdownComponents, streamdownRehypePlugins } from "./streamdown-media";
 
 export function IssueComment({
   name,
@@ -25,7 +26,13 @@ export function IssueComment({
         ) : null}
       </div>
       <div className="px-2 pb-1.5 text-sm leading-[21px] text-orchid-ink">
-        <Streamdown mode="static">{body}</Streamdown>
+        <Streamdown
+          mode="static"
+          rehypePlugins={streamdownRehypePlugins}
+          components={streamdownComponents}
+        >
+          {body}
+        </Streamdown>
       </div>
     </div>
   );
