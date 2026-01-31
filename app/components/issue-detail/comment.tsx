@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Streamdown } from "streamdown";
 
 export function IssueComment({
   name,
@@ -24,7 +25,7 @@ export function IssueComment({
         ) : null}
       </div>
       <div className="px-2 pb-1.5 text-sm leading-[21px] text-orchid-ink">
-        {body}
+        <Streamdown mode="static">{body}</Streamdown>
       </div>
     </div>
   );

@@ -8,14 +8,21 @@ type PromptVariant = "home" | "issues";
 type NavDirection = "toIssues" | "toHome";
 
 function variantFromPathname(pathname: string): PromptVariant {
-  return pathname.startsWith("/issues") ? "issues" : "home";
+  if (pathname.startsWith("/issues")) return "issues";
+  return "home";
 }
 
 export function PromptShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const variant = useMemo(() => variantFromPathname(pathname), [pathname]);
-  const isIssueDetailRoute =
-    pathname.startsWith("/issues/") && pathname.split("/").length === 3;
+  const isIssueDetailRoute = useMemo(() => {
+    if (!pathname.startsWith("/issues/")) return false;
+    const parts = pathname.split("/");
+    if (parts.length !== 3) return false;
+    const idOrRoute = parts[2];
+    if (!idOrRoute) return false;
+    return idOrRoute !== "sent" && idOrRoute !== "completed";
+  }, [pathname]);
   const issueIdForComment = useMemo(() => {
     if (!isIssueDetailRoute) return null;
     const parts = pathname.split("/");

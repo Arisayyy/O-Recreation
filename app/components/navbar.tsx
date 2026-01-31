@@ -3,6 +3,7 @@
 import React, { useLayoutEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AvatarMenu } from "@/app/components/avatar-menu";
 
 type NavItem = {
   href: string;
@@ -123,8 +124,18 @@ const NAV_ITEMS: NavItem[] = [
     icon: inboxIcon,
     activeMatch: (p) => p === "/issues",
   },
-  { href: "/mail/sent", label: "Sent", icon: sentIcon },
-  { href: "/mail/completed", label: "Done", icon: doneIcon },
+  {
+    href: "/issues/sent",
+    label: "Sent",
+    icon: sentIcon,
+    activeMatch: (p) => p === "/issues/sent",
+  },
+  {
+    href: "/issues/completed",
+    label: "Done",
+    icon: doneIcon,
+    activeMatch: (p) => p === "/issues/completed",
+  },
 ];
 
 function isItemActive(item: NavItem, pathname: string) {
@@ -134,8 +145,14 @@ function isItemActive(item: NavItem, pathname: string) {
 
 export function Navbar() {
   const pathname = usePathname();
-  const isIssueDetailRoute =
-    pathname.startsWith("/issues/") && pathname.split("/").length === 3;
+  const isIssueDetailRoute = useMemo(() => {
+    if (!pathname.startsWith("/issues/")) return false;
+    const parts = pathname.split("/");
+    if (parts.length !== 3) return false;
+    const idOrRoute = parts[2];
+    if (!idOrRoute) return false;
+    return idOrRoute !== "sent" && idOrRoute !== "completed";
+  }, [pathname]);
 
   const activeHref = useMemo(() => {
     const activeItem = NAV_ITEMS.find((item) => isItemActive(item, pathname));
@@ -303,22 +320,7 @@ export function Navbar() {
 
         {/* User menu */}
         <div className="flex flex-1 items-center justify-end gap-2">
-          <button
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded="false"
-            className="inline-flex cursor-pointer rounded-full"
-          >
-            <span className="relative inline-flex items-center text-[14px] leading-[21px] text-orchid-ink">
-              <span className="absolute inset-1 rounded-full bg-orchid-surface-2 opacity-0" />
-
-              <span className="relative z-10 p-1">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orchid-border bg-white text-[10px] font-semibold leading-[15px] text-orchid-ink">
-                  A
-                </span>
-              </span>
-            </span>
-          </button>
+          <AvatarMenu avatarInitial="A" align="end" />
         </div>
       </div>
     </nav>

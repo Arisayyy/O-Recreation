@@ -5,6 +5,7 @@ import { ChevronUpIcon } from "../icons/chevron-up-icon";
 import { ChevronDownIcon } from "../icons/chevron-down-icon";
 import { CheckIcon } from "../icons/check-icon";
 import { ReplyIcon } from "../icons/reply-icon";
+import { AvatarMenu } from "@/app/components/avatar-menu";
 import {
   SemiGhostButton,
   semiGhostButtonBaseClass,
@@ -89,21 +90,7 @@ export function IssueDetailHeader({
           </div>
 
           <div className="flex">
-            <button
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded="false"
-              className={["relative inline-flex items-center", "outline-none focus-visible:ring-2 focus-visible:ring-orchid-ink"].join(" ")}
-            >
-              <span className="relative inline-flex items-center text-sm leading-[21px] text-copy">
-                <span className="absolute inset-1 rounded-full bg-surface-strong opacity-0" />
-                <span className="relative z-10 p-1">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral bg-white text-[10px] font-semibold leading-[15px] text-copy">
-                    A
-                  </span>
-                </span>
-              </span>
-            </button>
+            <AvatarMenu avatarInitial="A" align="end" />
           </div>
         </div>
       </div>

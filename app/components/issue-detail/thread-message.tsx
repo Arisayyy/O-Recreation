@@ -1,5 +1,6 @@
 import React from "react";
 import type { IssueThreadMessageModel } from "./types";
+import { Streamdown } from "streamdown";
 
 function SquareHoverButton({
   children,
@@ -61,7 +62,7 @@ export function IssueThreadMessage({ message }: { message: IssueThreadMessageMod
 
   return (
     <div className="bg-surface-subtle group flex w-full flex-col gap-0.5 overflow-hidden rounded-xl p-0.5">
-      <div className="bg-surface flex flex-col gap-1 rounded-[10px] shadow-md">
+      <div className="bg-surface flex flex-col gap-1 rounded-[10px]">
         {/* Header */}
         <div className="relative z-0 flex items-center justify-between gap-2 p-2">
           <div className="flex items-center gap-1">
@@ -151,13 +152,12 @@ export function IssueThreadMessage({ message }: { message: IssueThreadMessageMod
           >
             <div
               role="presentation"
-              data-id="base-ui-issue-body-viewport"
-              className="size-full base-ui-disable-scrollbar"
-              style={{ overflow: "scroll" }}
+              className="size-full hide-scrollbar"
+              style={{ overflow: "auto" }}
             >
               <div role="presentation" style={{ minWidth: "fit-content" }}>
                 <div className="prose w-full max-w-none rounded-md m-0 p-0 text-orchid-ink">
-                  {message.body}
+                  <Streamdown mode="static">{message.body}</Streamdown>
                 </div>
               </div>
             </div>
