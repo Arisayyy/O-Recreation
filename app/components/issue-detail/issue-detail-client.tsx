@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { issueMessages as issueMessagesCollection } from "@/app/collections/issueMessages";
@@ -13,6 +13,9 @@ import { formatRelativeTime } from "@/app/lib/relative-time";
 export function IssueDetailClient({ issueId }: { issueId: string }) {
   const issues = issuesCollection.get();
   const messages = issueMessagesCollection.get();
+
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const replyWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const { data: issueList, isLoading: issuesLoading, isError: issuesError } =
     useLiveQuery(issues);
@@ -114,7 +117,16 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
 
   return (
     <div className="font-orchid-ui leading-6">
-      <IssueDetailHeader title={issue.title} />
+      <IssueDetailHeader
+        title={issue.title}
+        onReply={() => {
+          setIsReplyOpen(true);
+          // Scroll the composer into view (focus happens inside the composer).
+          window.setTimeout(() => {
+            replyWrapperRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          }, 0);
+        }}
+      />
 
       <div className="mx-auto w-full max-w-2xl px-5 pb-8 md:px-0">
         {/* Thread */}
@@ -148,12 +160,10 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
         </div>
 
         {/* Reply composer */}
-        <div className="mt-4">
+        <div ref={replyWrapperRef} className="mt-4">
           <IssueReplyComposer
+            open={isReplyOpen}
             issueId={issueId}
-            replyToLabel={issue.createdBy?.name ?? "Anonymous"}
-            replyToInitial={(issue.createdBy?.name?.trim()?.[0] ?? "A").toUpperCase()}
-            defaultSubject={`Re: ${issue.title}`}
           />
         </div>
       </div>

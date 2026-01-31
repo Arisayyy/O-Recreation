@@ -25,6 +25,7 @@ export function SemiGhostButton({
   disabled,
   className,
   type = "button",
+  onClick,
 }: {
   label?: string;
   keycap?: string;
@@ -32,11 +33,13 @@ export function SemiGhostButton({
   disabled?: boolean;
   className?: string;
   type?: "button" | "submit" | "reset";
+  onClick?: () => void;
 }) {
   return (
     <button
       type={type}
       disabled={disabled}
+      onClick={onClick}
       className={[
         semiGhostButtonBaseClass,
         "px-1.5",

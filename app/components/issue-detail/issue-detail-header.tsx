@@ -20,8 +20,10 @@ const navTitleClass =
 
 export function IssueDetailHeader({
   title,
+  onReply,
 }: {
   title: string;
+  onReply?: () => void;
 }) {
   return (
     <nav className="relative z-10 px-6 py-5 font-orchid-ui leading-6">
@@ -81,6 +83,7 @@ export function IssueDetailHeader({
                 label="Reply"
                 keycap="R"
                 className="w-[94.7344px]"
+                onClick={onReply}
               />
             </div>
           </div>
