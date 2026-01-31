@@ -1,6 +1,7 @@
 import { ReplyButton } from "./reply-button";
 import { DraftIcon } from "@/app/components/icons/draft-icon";
 import type { IssuesInboxItemModel } from "./types";
+import { AvatarMarble } from "@/app/components/avatar-marble";
 import Link from "next/link";
 
 export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
@@ -31,10 +32,20 @@ export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
           <div className="flex flex-1 items-start gap-2 min-w-0">
             <div className="flex-1 min-w-0 space-x-2">
               <div className="border-neutral inline-flex -translate-y-px items-center gap-1 rounded-lg border bg-white px-1 py-px shadow-xs">
-                <div className="bg-white border-neutral text-orchid-ink flex items-center justify-center overflow-hidden border font-semibold rounded size-4 min-w-4 min-h-4 text-[10px] leading-[15px]">
-                  <span className="grid place-items-center size-4 min-w-4 min-h-4 text-[10px] leading-[15px]">
-                    {item.avatarInitial}
-                  </span>
+                <div className="bg-white text-orchid-ink flex items-center justify-center overflow-hidden font-semibold rounded size-4 min-w-4 min-h-4 text-[10px] leading-[15px]">
+                  {item.avatarId ? (
+                    <AvatarMarble
+                      size={16}
+                      id={item.avatarId}
+                      name={item.avatarName ?? ""}
+                      showInitials={false}
+                      className="block size-4"
+                    />
+                  ) : (
+                    <span className="grid place-items-center size-4 min-w-4 min-h-4 text-[10px] leading-[15px]">
+                      {item.avatarInitial}
+                    </span>
+                  )}
                 </div>
                 <span className="flex shrink flex-row items-center gap-1 px-0.5 text-sm leading-[21px] text-orchid-muted">
                   <span>{item.fromLabel}</span>

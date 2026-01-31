@@ -20,11 +20,14 @@ export function IssuesInboxList({
       .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
       .map((issue) => {
         const initial = (issue.createdBy?.name?.trim()?.[0] ?? "A").toUpperCase();
+        const avatarName = issue.createdBy?.name ?? "Anonymous";
         return {
           id: issue.id,
           kind: "issue",
           avatarInitial: initial,
-          fromLabel: `me, ${issue.createdBy?.name ?? "Anonymous"}`,
+          avatarId: avatarName,
+          avatarName,
+          fromLabel: `me, ${avatarName}`,
           summary: issue.title,
           draftTitle: issue.status,
           draftBody: issue.body || "No description yet.",

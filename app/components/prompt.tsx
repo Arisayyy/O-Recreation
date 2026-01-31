@@ -2,8 +2,9 @@
 
 import React from "react";
 import { Playfair_Display } from "next/font/google";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flushSync } from "react-dom";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { issueMessages } from "@/app/collections/issueMessages";
 import { issues, type Issue } from "@/app/collections/issues";
@@ -13,6 +14,7 @@ import { GitHubIcon } from "@/app/components/icons/github-icon";
 import { LinearIcon } from "@/app/components/icons/linear-icon";
 import { ExaIcon } from "@/app/components/icons/exa-icon";
 import { useChat } from "@/app/components/chat/chat-context";
+import { useFirstMessageSendAnimation } from "@/app/components/chat/first-message-send-animation";
 import { uploadToUploadsRoute } from "@/app/lib/uploads";
 import type { FileUIPart } from "ai";
 
@@ -312,10 +314,14 @@ export function Prompt({
 }) {
   const router = useRouter();
   const chat = useChat();
+  const chatStatus = chat.status;
+  const stopChat = chat.stop;
+  const firstMessageAnim = useFirstMessageSendAnimation();
   const composerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const inputAnchorRef = useRef<HTMLDivElement | null>(null);
   const lastAtContextRef = useRef<AtContext | null>(null);
+  const prevVariantRef = useRef<PromptVariant | null>(null);
 
   const [displayValue, setDisplayValue] = useState("");
   const [serializedValue, setSerializedValue] = useState("");
@@ -335,7 +341,18 @@ export function Prompt({
   const canSendChatMessage =
     variant === "home" || variant === "chat" || (variant === "issues" && !issueIdForComment);
   const isThinking =
-    canSendChatMessage && (chat.status === "submitted" || chat.status === "streaming");
+    canSendChatMessage && (chatStatus === "submitted" || chatStatus === "streaming");
+
+  // If we leave `/chat` while the assistant is still streaming, stop the in-flight request.
+  // This avoids leaking the "Thinking..." prompt UI onto unrelated routes after exiting chat.
+  useEffect(() => {
+    const prev = prevVariantRef.current;
+    prevVariantRef.current = variant;
+
+    const leftChat = prev === "chat" && variant !== "chat";
+    const isStreaming = chatStatus === "submitted" || chatStatus === "streaming";
+    if (leftChat && isStreaming) stopChat();
+  }, [chatStatus, stopChat, variant]);
 
   const atContext = useMemo(
     () => getAtContext(displayValue, cursorIndex),
@@ -429,6 +446,16 @@ export function Prompt({
     ];
 
     if (variant === "home" || variant === "issues") {
+      // "First message send" animation: capture an origin point near the composer,
+      // then animate the first user message into place on /chat.
+      const anchor = inputAnchorRef.current ?? composerRef.current;
+      if (anchor && typeof window !== "undefined") {
+        const r = anchor.getBoundingClientRect();
+        // Bias towards the left/top of the typed content area (matches chat alignment better).
+        const sourcePoint = { x: r.left + 16, y: r.top + 18 };
+        flushSync(() => firstMessageAnim.begin(sourcePoint));
+      }
+
       chat.clear();
       void chat.sendMessage({ role: "user", parts });
       router.push("/chat");

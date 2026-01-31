@@ -2,6 +2,7 @@ import React from "react";
 import type { IssueThreadMessageModel } from "./types";
 import { Streamdown } from "streamdown";
 import { streamdownComponents, streamdownRehypePlugins } from "./streamdown-media";
+import { AvatarMarble } from "@/app/components/avatar-marble";
 
 function SquareHoverButton({
   children,
@@ -86,10 +87,20 @@ export function IssueThreadMessage({ message }: { message: IssueThreadMessageMod
                   ].join(" ")}
                 />
                 <div className="relative z-[2] flex w-full items-center gap-1 px-1 py-1">
-                  <div className="bg-surface border-neutral text-orchid-ink flex items-center justify-center overflow-hidden rounded-full border font-semibold size-6 min-w-6 min-h-6 text-[10px] leading-[15px]">
-                    <span className="grid place-items-center size-6 min-w-6 min-h-6 text-[10px] leading-[15px]">
-                      {message.fromInitial}
-                    </span>
+                  <div className="bg-surface text-orchid-ink flex items-center justify-center overflow-hidden rounded-full font-semibold size-6 min-w-6 min-h-6 text-[10px] leading-[15px]">
+                    {message.fromAvatarId ? (
+                      <AvatarMarble
+                        size={24}
+                        id={message.fromAvatarId}
+                        name={message.fromName}
+                        showInitials={false}
+                        className="block size-6"
+                      />
+                    ) : (
+                      <span className="grid place-items-center size-6 min-w-6 min-h-6 text-[10px] leading-[15px]">
+                        {message.fromInitial}
+                      </span>
+                    )}
                   </div>
                   <span className="px-1 text-sm leading-[21px] text-orchid-ink">
                     {message.fromName}

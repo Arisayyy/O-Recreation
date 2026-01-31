@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Menu } from "@base-ui/react/menu";
+import { AvatarMarble } from "@/app/components/avatar-marble";
 import { BugIcon } from "@/app/components/icons/bug-icon";
 import { LogoutIcon } from "@/app/components/icons/logout-icon";
 import { MailIcon } from "@/app/components/icons/mail-icon";
@@ -11,6 +12,7 @@ import { SettingsIcon } from "@/app/components/icons/settings-icon";
 import { SunIcon } from "@/app/components/icons/sun-icon";
 import { SettingsDialog } from "@/app/components/settings-dialog";
 import { BugReportDialog } from "@/app/components/bug-report-dialog";
+import { getOrCreateDeviceId } from "@/app/lib/replicate/anonymousIdentity";
 
 type ThemePreference = "system" | "light" | "dark";
 
@@ -95,13 +97,22 @@ function MenuRow({
 
 export function AvatarMenu({
   avatarInitial = "A",
+  avatarId,
+  avatarName,
   align = "end",
 }: {
   avatarInitial?: string;
+  avatarId?: string;
+  avatarName?: string;
   align?: "start" | "center" | "end";
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const fallbackId = useSyncExternalStore<string | null>(
+    () => () => {},
+    () => (avatarId ? null : getOrCreateDeviceId()),
+    () => null,
+  );
 
   const theme = useSyncExternalStore<ThemePreference>(
     (onStoreChange) => {
@@ -144,9 +155,18 @@ export function AvatarMenu({
             <span className="absolute inset-1 rounded-full bg-orchid-surface-2 opacity-0" />
 
             <span className="relative z-10 p-1">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orchid-border bg-white text-[10px] font-semibold leading-[15px] text-orchid-ink">
-                {avatarInitial}
-              </span>
+              {avatarId || fallbackId ? (
+                <AvatarMarble
+                  size={32}
+                  id={avatarId ?? fallbackId ?? undefined}
+                  name={avatarName ?? ""}
+                  className="block h-8 w-8 border border-orchid-border"
+                />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orchid-border bg-white text-[10px] font-semibold leading-[15px] text-orchid-ink">
+                  {avatarInitial}
+                </span>
+              )}
             </span>
           </span>
         </Menu.Trigger>

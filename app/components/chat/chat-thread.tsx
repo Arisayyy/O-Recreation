@@ -11,17 +11,22 @@ import { Streamdown } from "streamdown";
 import { streamdownComponents, streamdownRehypePlugins } from "@/app/components/issue-detail/streamdown-media";
 import { useChat } from "./chat-context";
 import { useOptimizedScroll } from "@/app/hooks/use-optimized-scroll";
+import { useFirstMessageSendAnimation } from "@/app/components/chat/first-message-send-animation";
 
 // Space reserved for the fixed prompt at the bottom of the page.
 const BOTTOM_PADDING_PX = 164;
 
 export function ChatThread() {
   const { messages, status } = useChat();
+  const firstMessageAnim = useFirstMessageSendAnimation();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastUserMessageRef = useRef<HTMLDivElement | null>(null);
+  const firstUserMessageRef = useRef<HTMLDivElement | null>(null);
   const contentEndRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
   const lastSpacerHeightRef = useRef<number>(0);
+  const localBeginTokenRef = useRef<string | null>(null);
+  const didAnimateTokenRef = useRef<string | null>(null);
 
   const { scrollToBottom, markManualScroll, resetManualScroll } =
     useOptimizedScroll(bottomRef);
@@ -39,6 +44,71 @@ export function ChatThread() {
     }
     return null;
   }, [sorted]);
+
+  // Animate the very first user message into place when we land on /chat.
+  useLayoutEffect(() => {
+    const beginToken = firstMessageAnim.consumeBeginToken();
+    if (beginToken) localBeginTokenRef.current = beginToken;
+
+    if (localBeginTokenRef.current == null) return;
+    if (didAnimateTokenRef.current === localBeginTokenRef.current) return;
+    if (firstMessageAnim.phase !== "userAnimating") return;
+    if (userMessageCount !== 1) return;
+    if (!firstMessageAnim.sourcePoint) return;
+
+    const el = firstUserMessageRef.current;
+    if (!el) return;
+
+    const easing =
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--ease-out-expo")
+        .trim() || "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    const dest = el.getBoundingClientRect();
+    const dx = 0;
+    const dy = Math.round(firstMessageAnim.sourcePoint.y - dest.top);
+
+    // Ensure no flash of un-animated content.
+    el.style.willChange = "transform, opacity";
+    el.style.opacity = "0";
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    el.getBoundingClientRect();
+
+    const anim = el.animate(
+      [
+        { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 },
+        { transform: "translate(0px, 0px)", opacity: 1 },
+      ],
+      { duration: 420, easing, fill: "both" },
+    );
+
+    didAnimateTokenRef.current = localBeginTokenRef.current;
+
+    anim.finished
+      .catch(() => {})
+      .finally(() => {
+        el.style.willChange = "";
+        el.style.opacity = "";
+        el.style.transform = "";
+        firstMessageAnim.markUserDone();
+      });
+  }, [
+    firstMessageAnim,
+    firstMessageAnim.phase,
+    firstMessageAnim.sourcePoint,
+    userMessageCount,
+  ]);
+
+  // Once the first assistant message has appeared (and had time to fade in), reset the one-shot state.
+  useEffect(() => {
+    if (firstMessageAnim.phase !== "userDone") return;
+    if (userMessageCount !== 1) return;
+    const hasAssistant = sorted.some((m) => m.role === "assistant");
+    if (!hasAssistant) return;
+
+    const t = window.setTimeout(() => firstMessageAnim.reset(), 600);
+    return () => window.clearTimeout(t);
+  }, [firstMessageAnim, firstMessageAnim.phase, sorted, userMessageCount]);
 
   // Stop auto-scroll if the user starts scrolling manually.
   useEffect(() => {
@@ -189,6 +259,8 @@ export function ChatThread() {
       >
         {sorted.map((m) => {
           const isUser = m.role === "user";
+          const isFirstUserMessageInNewChat =
+            isUser && userMessageCount === 1 && firstMessageAnim.phase !== "idle";
           const textParts = m.parts.filter((p) => p.type === "text");
           const fileParts = m.parts.filter((p) => p.type === "file");
           const markdown = textParts
@@ -201,18 +273,38 @@ export function ChatThread() {
             markdown.length === 0 &&
             fileParts.length === 0;
 
+          // Fade the first assistant message in after the first user message animation completes.
+          const shouldGateFirstAssistantFade =
+            m.role === "assistant" &&
+            userMessageCount === 1 &&
+            firstMessageAnim.phase !== "idle";
+          const assistantOpacity =
+            shouldGateFirstAssistantFade && firstMessageAnim.phase !== "userDone"
+              ? 0
+              : 1;
+
           return (
             <div
               key={m.id}
               ref={
-                isUser && lastUserMessageId && m.id === lastUserMessageId
-                  ? lastUserMessageRef
-                  : undefined
+                isFirstUserMessageInNewChat
+                  ? firstUserMessageRef
+                  : isUser && lastUserMessageId && m.id === lastUserMessageId
+                    ? lastUserMessageRef
+                    : undefined
               }
               className={[
                 "group flex w-full items-end gap-2 py-4",
                 isUser ? "is-user" : "is-assistant",
               ].join(" ")}
+              style={
+                shouldGateFirstAssistantFade
+                  ? {
+                      opacity: assistantOpacity,
+                      transition: "opacity 350ms var(--ease-out-expo)",
+                    }
+                  : undefined
+              }
             >
               <div className="text-copy overflow-hidden flex w-full flex-col gap-3 text-[14px] leading-[21px] group-[.is-user]:text-[18px] group-[.is-user]:leading-[27px]">
                 <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">

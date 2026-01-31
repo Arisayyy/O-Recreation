@@ -8,6 +8,7 @@ export type IssueThreadMessageModel = {
   id: string;
   fromInitial: string;
   fromName: string;
+  fromAvatarId?: string;
   timeLabel: string;
   body: string;
   attachments?: IssueAttachment[];
