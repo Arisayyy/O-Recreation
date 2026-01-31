@@ -13,6 +13,8 @@ import { GitHubIcon } from "@/app/components/icons/github-icon";
 import { LinearIcon } from "@/app/components/icons/linear-icon";
 import { ExaIcon } from "@/app/components/icons/exa-icon";
 import { useChat } from "@/app/components/chat/chat-context";
+import { uploadToUploadsRoute } from "@/app/lib/uploads";
+import type { FileUIPart } from "ai";
 
 const playfairDisplay = Playfair_Display({
   weight: ["500"],
@@ -305,6 +307,8 @@ export function Prompt({
   const [cursorIndex, setCursorIndex] = useState(0);
   const [dismissedAtIndex, setDismissedAtIndex] = useState<number | null>(null);
   const [activeConnectionIndex, setActiveConnectionIndex] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<FileUIPart[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
   const isEmpty = useMemo(() => serializedValue.trim().length === 0, [serializedValue]);
   const hideExtras = variant !== "home";
@@ -314,6 +318,8 @@ export function Prompt({
 
   const canSendComment = variant === "issues" && !!issueIdForComment;
   const canSendChatMessage = variant === "home" || variant === "chat";
+  const isThinking =
+    canSendChatMessage && (chat.status === "submitted" || chat.status === "streaming");
 
   const atContext = useMemo(
     () => getAtContext(displayValue, cursorIndex),
@@ -393,18 +399,51 @@ export function Prompt({
 
   const sendChatMessage = () => {
     if (!canSendChatMessage) return;
-    if (isEmpty) return;
+    if (isEmpty && pendingFiles.length === 0) return;
+    if (isUploadingFiles) return;
 
     const msg = serializedValue.trim();
+    const parts = [
+      ...(msg.length ? [{ type: "text" as const, text: msg }] : []),
+      ...pendingFiles,
+    ];
+
     if (variant === "home") {
       chat.clear();
-      chat.appendUserMessage(msg);
+      void chat.sendMessage({ role: "user", parts });
       router.push("/chat");
     } else {
-      chat.appendUserMessage(msg);
+      void chat.sendMessage({ role: "user", parts });
     }
 
     resetComposer();
+    setPendingFiles([]);
+  };
+
+  const handleFilesSelected = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setIsUploadingFiles(true);
+    try {
+      const uploaded = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const res = await uploadToUploadsRoute({ file, prefix: "uploads/chat/" });
+          const url = res.publicUrl ?? res.presignedUrl;
+          return {
+            type: "file" as const,
+            mediaType: file.type || "application/octet-stream",
+            filename: file.name,
+            url,
+          } satisfies FileUIPart;
+        }),
+      );
+
+      setPendingFiles((prev) => [...prev, ...uploaded]);
+    } finally {
+      setIsUploadingFiles(false);
+      // allow selecting the same file twice
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const resetActiveIndexIfAtContextChanged = (next: AtContext | null) => {
@@ -521,9 +560,38 @@ export function Prompt({
           data-orchid-flip="prompt-composer"
           className="bg-surface-subtle p-0.5 hover:ring-bg-surface-strong ease-out-expo w-full overflow-hidden rounded-[14px] transition-shadow duration-500 hover:ring-2"
         >
-          <div className="grid overflow-hidden transition-all duration-500 ease-out-expo grid-rows-[0fr]">
+          <div
+            className={[
+              "grid overflow-hidden transition-all duration-500 ease-out",
+              isThinking ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            ].join(" ")}
+          >
             <div className="min-h-0">
-              <div className="px-2 py-1 overflow-visible" />
+              <div className="px-2 py-1 overflow-visible">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="not-prose text-copy w-full flex-1 px-1">
+                    <div className="px-1.5 py-1">
+                      <div aria-live="polite" className="flex items-center gap-2">
+                        <div className="bg-ai animate-pulse-size size-2 rounded-full" aria-hidden="true" />
+                        <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                          Thinking...
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="group/button focus-visible:ring-neutral-strong relative inline-flex cursor-pointer rounded-lg whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2 h-7 px-1.5 shrink-0"
+                    onClick={() => chat.stop()}
+                  >
+                    <div className="absolute rounded-lg border transition-transform border-transparent bg-surface-strong opacity-0 group-hover/button:opacity-100 group-hover/button:blur-none group-hover/button:inset-0 inset-2 blur-sm group-active/button:inset-shadow-xs group-active/button:shadow-none" />
+                    <div className="text-copy relative z-10 flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
+                      <div className="text-copy px-0.5 leading-0 transition-transform">Cancel</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -698,7 +766,13 @@ export function Prompt({
             <div className="flex-1 overflow-auto" />
           </div>
 
-          <input ref={fileInputRef} multiple type="file" className="hidden" />
+          <input
+            ref={fileInputRef}
+            multiple
+            type="file"
+            className="hidden"
+            onChange={(e) => void handleFilesSelected(e.currentTarget.files)}
+          />
 
           {/* Actions */}
           <div className="flex items-center justify-between p-2">
@@ -755,9 +829,9 @@ export function Prompt({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={isEmpty}
+                disabled={(isEmpty && pendingFiles.length === 0) || isUploadingFiles || chat.status !== "ready"}
                 className={[
-                  isEmpty
+                  (isEmpty && pendingFiles.length === 0) || isUploadingFiles || chat.status !== "ready"
                     ? "relative inline-flex h-7 flex-none cursor-not-allowed items-center rounded-orchid-pill px-1.5 py-0 opacity-50"
                     : "group/button focus-visible:ring-neutral-strong relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
                 ].join(" ")}
@@ -775,7 +849,17 @@ export function Prompt({
                   <div className="absolute inset-0 rounded-orchid-pill border border-neutral bg-gradient-to-t from-surface to-surface shadow-xs transition-transform group-hover/button:to-surface-weak group-active/button:inset-shadow-xs group-active/button:shadow-none group-active/button:to-surface-subtle" />
                 )}
                 <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-ink">
-                  <span className="px-[2px]">{canSendComment ? "Comment" : canSendChatMessage ? "Send" : "Go"}</span>
+                  <span className="px-[2px]">
+                    {isUploadingFiles
+                      ? "Uploading…"
+                      : canSendComment
+                        ? "Comment"
+                        : canSendChatMessage
+                          ? chat.status === "streaming" || chat.status === "submitted"
+                            ? "Sending…"
+                            : "Send"
+                          : "Go"}
+                  </span>
                   <span className="hidden h-4 items-center rounded border border-neutral bg-surface-weak px-1 text-[12px] leading-[17.6px] text-orchid-placeholder shadow-xs md:inline-flex">
                     ↵
                   </span>
@@ -785,6 +869,23 @@ export function Prompt({
           </div>
         </div>
       </div>
+
+      {/* Pending uploads */}
+      {pendingFiles.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          {pendingFiles.map((f, i) => (
+            <button
+              key={`${f.url}-${i}`}
+              type="button"
+              className="rounded-orchid-pill border border-neutral bg-surface px-2 py-1 text-xs text-orchid-muted hover:text-orchid-ink"
+              onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
+              title="Remove attachment"
+            >
+              {f.filename ?? "attachment"} <span className="ml-1 opacity-70">×</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div
         aria-hidden={hideExtras}

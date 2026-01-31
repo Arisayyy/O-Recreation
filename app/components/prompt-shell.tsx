@@ -111,7 +111,7 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
       <div
         className={[
           "relative flex h-full min-h-0 w-full flex-col overflow-x-hidden",
-          isIssues || isChat ? "pb-32" : "pb-16",
+          isIssues ? "pb-32" : isChat ? "pb-0" : "pb-16",
         ].join(" ")}
       >
         {isIssues ? (
@@ -154,15 +154,17 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
             )}
           </>
         ) : isChat ? (
-          <div className="flex h-full min-h-0 flex-1 flex-col">
-            <div className="mx-auto min-h-0 w-full flex-1">
-              <div
-                className="min-h-0 h-full w-full overflow-y-auto pb-4"
-                style={{ scrollbarGutter: "stable both-edges" }}
-              >
-                {children}
-              </div>
-            </div>
+          <div
+            className="h-screen flex-1 overflow-auto focus-visible:outline-hidden"
+            style={{
+              scrollbarGutter: "stable",
+              paddingLeft: "2.25rem",
+              paddingRight: "1.25rem",
+            }}
+          >
+            {children}
+            {/* Matches the reference spacer below the thread. */}
+            <div aria-hidden style={{ height: 164 }} />
           </div>
         ) : (
           <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-6">
@@ -176,7 +178,9 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
           ref={promptWrapperRef}
           className={
             isIssues || isChat
-              ? "fixed inset-x-0 bottom-6 z-40 mx-auto w-full max-w-2xl px-5"
+              ? isChat
+                ? "fixed inset-x-0 bottom-6 z-40 mx-auto w-full max-w-2xl pl-9 pr-5"
+                : "fixed inset-x-0 bottom-6 z-40 mx-auto w-full max-w-2xl px-5"
               : "fixed inset-x-0 top-[calc(25vh+72px)] z-40 mx-auto w-full max-w-2xl px-5"
           }
         >

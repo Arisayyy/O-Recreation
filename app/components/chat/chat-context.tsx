@@ -1,66 +1,28 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo } from "react";
+import { useChat as useAIChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 
-export type EphemeralChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  body: string;
-  createdAt: number;
-};
-
-type ChatContextValue = {
-  messages: EphemeralChatMessage[];
-  appendUserMessage: (body: string) => EphemeralChatMessage | null;
-  appendAssistantMessage: (body: string) => EphemeralChatMessage | null;
+type ChatContextValue = Pick<
+  ReturnType<typeof useAIChat>,
+  "messages" | "status" | "error" | "sendMessage" | "stop" | "setMessages"
+> & {
   clear: () => void;
 };
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
-function safeRandomUUID() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const [messages, setMessages] = useState<EphemeralChatMessage[]>([]);
+  const { messages, status, error, sendMessage, stop, setMessages } = useAIChat({
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
+  });
 
-  const clear = useCallback(() => setMessages([]), []);
+  const clear = useCallback(() => setMessages([]), [setMessages]);
 
-  const appendUserMessage = useCallback((body: string) => {
-    const trimmed = body.trim();
-    if (trimmed.length === 0) return null;
-
-    const next: EphemeralChatMessage = {
-      id: safeRandomUUID(),
-      role: "user",
-      body: trimmed,
-      createdAt: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, next]);
-    return next;
-  }, []);
-
-  const appendAssistantMessage = useCallback((body: string) => {
-    const trimmed = body.trim();
-    if (trimmed.length === 0) return null;
-
-    const next: EphemeralChatMessage = {
-      id: safeRandomUUID(),
-      role: "assistant",
-      body: trimmed,
-      createdAt: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, next]);
-    return next;
-  }, []);
-
-  const value = useMemo<ChatContextValue>(
-    () => ({ messages, appendUserMessage, appendAssistantMessage, clear }),
-    [messages, appendUserMessage, appendAssistantMessage, clear],
-  );
+  const value = useMemo<ChatContextValue>(() => {
+    return { messages, status, error, sendMessage, stop, setMessages, clear };
+  }, [messages, status, error, sendMessage, stop, setMessages, clear]);
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

@@ -3,6 +3,7 @@
 import React from "react";
 import { Streamdown, defaultRehypePlugins } from "streamdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import { StreamdownPre } from "@/app/components/code-block";
 
 function uniq(values: string[]): string[] {
   return Array.from(new Set(values));
@@ -57,5 +58,6 @@ export function StreamdownImage(props: React.ComponentPropsWithoutRef<"img"> & {
 
 export const streamdownComponents = {
   img: StreamdownImage,
+  pre: StreamdownPre,
 } as unknown as React.ComponentProps<typeof Streamdown>["components"];
 

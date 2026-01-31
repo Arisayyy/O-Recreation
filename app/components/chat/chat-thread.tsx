@@ -6,13 +6,10 @@ import { streamdownComponents, streamdownRehypePlugins } from "@/app/components/
 import { useChat } from "./chat-context";
 
 export function ChatThread() {
-  const { messages } = useChat();
+  const { messages, status } = useChat();
   const endRef = useRef<HTMLDivElement | null>(null);
 
-  const sorted = useMemo(
-    () => messages.slice().sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)),
-    [messages],
-  );
+  const sorted = useMemo(() => messages.slice(), [messages]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
@@ -30,6 +27,18 @@ export function ChatThread() {
               <div className="flex min-h-[calc(100dvh-var(--bottom-padding))] flex-col py-9">
                 {sorted.map((m) => {
                   const isUser = m.role === "user";
+                  const textParts = m.parts.filter((p) => p.type === "text");
+                  const fileParts = m.parts.filter((p) => p.type === "file");
+                  const markdown = textParts
+                    .map((p) => p.text)
+                    .join("\n\n")
+                    .trim();
+                  const isStreamingAssistantPlaceholder =
+                    m.role === "assistant" &&
+                    (status === "submitted" || status === "streaming") &&
+                    markdown.length === 0 &&
+                    fileParts.length === 0;
+
                   return (
                     <div
                       key={m.id}
@@ -38,15 +47,56 @@ export function ChatThread() {
                         isUser ? "is-user" : "is-assistant",
                       ].join(" ")}
                     >
-                      <div className="text-copy overflow-hidden group-[.is-user]:text-copy-xl flex w-full flex-col gap-3">
+                      <div className="text-copy overflow-hidden flex w-full flex-col gap-3 text-[14px] leading-[21px] group-[.is-user]:text-[18px] group-[.is-user]:leading-[27px]">
                         <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                          <Streamdown
-                            mode="static"
-                            rehypePlugins={streamdownRehypePlugins}
-                            components={streamdownComponents}
-                          >
-                            {m.body}
-                          </Streamdown>
+                          {isStreamingAssistantPlaceholder ? (
+                            <div className="not-prose text-copy w-full">
+                              <div className="py-1">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="bg-ai animate-pulse-size size-2 rounded-full"
+                                    aria-hidden="true"
+                                  />
+                                  <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                                    Thinking...
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {markdown.length > 0 ? (
+                            <Streamdown
+                              mode="static"
+                              rehypePlugins={streamdownRehypePlugins}
+                              components={streamdownComponents}
+                            >
+                              {markdown}
+                            </Streamdown>
+                          ) : null}
+
+                          {fileParts.map((part, idx) => {
+                            const isImage = part.mediaType.startsWith("image/");
+                            return isImage ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={`${m.id}-file-${idx}`}
+                                src={part.url}
+                                alt={part.filename ?? "attachment"}
+                                className="max-w-full rounded-lg border border-neutral"
+                              />
+                            ) : (
+                              <a
+                                key={`${m.id}-file-${idx}`}
+                                href={part.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm underline underline-offset-4"
+                              >
+                                {part.filename ?? part.url}
+                              </a>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
