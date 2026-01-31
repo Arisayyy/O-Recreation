@@ -3,11 +3,13 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Prompt } from "@/app/components/prompt";
+import { ChatProvider } from "@/app/components/chat/chat-context";
 
-type PromptVariant = "home" | "issues";
+type PromptVariant = "home" | "issues" | "chat";
 type NavDirection = "toIssues" | "toHome";
 
 function variantFromPathname(pathname: string): PromptVariant {
+  if (pathname.startsWith("/chat")) return "chat";
   if (pathname.startsWith("/issues")) return "issues";
   return "home";
 }
@@ -102,77 +104,91 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
   }, [pathname, variant]);
 
   const isIssues = variant === "issues";
+  const isChat = variant === "chat";
 
   return (
-    <div
-      className={[
-        "relative flex h-full min-h-0 w-full flex-col overflow-x-hidden",
-        isIssues ? "pb-32" : "pb-16",
-      ].join(" ")}
-    >
-      {isIssues ? (
-        <>
-          {/* Issues */}
-          {isIssueDetailRoute ? (
-            <div className="flex h-full min-h-0 flex-1 flex-col">
-              <div className="mx-auto min-h-0 w-full flex-1">
-                <div
-                  className="min-h-0 h-full w-full overflow-y-auto pb-4"
-                  style={{ scrollbarGutter: "stable both-edges" }}
-                >
-                  {children}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Header */}
-              <div className="relative w-full px-5 pt-4 md:pt-10">
-                <div className="relative z-20 mx-auto h-full">
-                  <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-4" />
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="-mt-10 flex h-full min-h-0 flex-1 flex-col">
+    <ChatProvider>
+      <div
+        className={[
+          "relative flex h-full min-h-0 w-full flex-col overflow-x-hidden",
+          isIssues || isChat ? "pb-32" : "pb-16",
+        ].join(" ")}
+      >
+        {isIssues ? (
+          <>
+            {/* Issues */}
+            {isIssueDetailRoute ? (
+              <div className="flex h-full min-h-0 flex-1 flex-col">
                 <div className="mx-auto min-h-0 w-full flex-1">
                   <div
-                    className="min-h-0 h-full w-full overflow-y-auto px-5 pb-4 md:px-0"
+                    className="min-h-0 h-full w-full overflow-y-auto pb-4"
                     style={{ scrollbarGutter: "stable both-edges" }}
                   >
-                    <div className="mx-auto mt-16 max-w-2xl md:mt-20">
-                      {children}
-                    </div>
+                    {children}
                   </div>
                 </div>
               </div>
-            </>
-          )}
-        </>
-      ) : (
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-6">
-          {/* Content */}
-          {children}
-        </div>
-      )}
+            ) : (
+              <>
+                {/* Header */}
+                <div className="relative w-full px-5 pt-4 md:pt-10">
+                  <div className="relative z-20 mx-auto h-full">
+                    <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-4" />
+                  </div>
+                </div>
 
-      {/* Prompt */}
-      <div
-        ref={promptWrapperRef}
-        className={
-          isIssues
-            ? "fixed inset-x-0 bottom-6 z-40 mx-auto w-full max-w-2xl px-5"
-            : "fixed inset-x-0 top-[calc(25vh+72px)] z-40 mx-auto w-full max-w-2xl px-5"
-        }
-      >
-        <Prompt
-          variant={variant}
-          isNavigating={navState.active}
-          navDirection={navState.direction}
-          issueIdForComment={issueIdForComment}
-        />
+                {/* Content */}
+                <div className="-mt-10 flex h-full min-h-0 flex-1 flex-col">
+                  <div className="mx-auto min-h-0 w-full flex-1">
+                    <div
+                      className="min-h-0 h-full w-full overflow-y-auto px-5 pb-4 md:px-0"
+                      style={{ scrollbarGutter: "stable both-edges" }}
+                    >
+                      <div className="mx-auto mt-16 max-w-2xl md:mt-20">
+                        {children}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        ) : isChat ? (
+          <div className="flex h-full min-h-0 flex-1 flex-col">
+            <div className="mx-auto min-h-0 w-full flex-1">
+              <div
+                className="min-h-0 h-full w-full overflow-y-auto pb-4"
+                style={{ scrollbarGutter: "stable both-edges" }}
+              >
+                {children}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-6">
+            {/* Content */}
+            {children}
+          </div>
+        )}
+
+        {/* Prompt */}
+        <div
+          ref={promptWrapperRef}
+          className={
+            isIssues || isChat
+              ? "fixed inset-x-0 bottom-6 z-40 mx-auto w-full max-w-2xl px-5"
+              : "fixed inset-x-0 top-[calc(25vh+72px)] z-40 mx-auto w-full max-w-2xl px-5"
+          }
+        >
+          <Prompt
+            variant={variant}
+            isNavigating={navState.active}
+            navDirection={navState.direction}
+            issueIdForComment={issueIdForComment}
+          />
+        </div>
       </div>
-    </div>
+    </ChatProvider>
   );
 }
 

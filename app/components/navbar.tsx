@@ -4,6 +4,7 @@ import React, { useLayoutEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AvatarMenu } from "@/app/components/avatar-menu";
+import { AltNavbar } from "@/app/components/alt-navbar";
 
 type NavItem = {
   href: string;
@@ -145,6 +146,7 @@ function isItemActive(item: NavItem, pathname: string) {
 
 export function Navbar() {
   const pathname = usePathname();
+  const isChatRoute = useMemo(() => pathname === "/chat" || pathname.startsWith("/chat/"), [pathname]);
   const isIssueDetailRoute = useMemo(() => {
     if (!pathname.startsWith("/issues/")) return false;
     const parts = pathname.split("/");
@@ -173,7 +175,7 @@ export function Navbar() {
   const animationRef = useRef<Animation | null>(null);
 
   useLayoutEffect(() => {
-    if (isIssueDetailRoute) return;
+    if (isIssueDetailRoute || isChatRoute) return;
 
     const navList = navListRef.current;
     const indicator = indicatorRef.current;
@@ -251,9 +253,10 @@ export function Navbar() {
 
     lastIndicatorRef.current = next;
     lastPathRef.current = pathname;
-  }, [activeHref, pathname, isIssueDetailRoute]);
+  }, [activeHref, pathname, isIssueDetailRoute, isChatRoute]);
 
   if (isIssueDetailRoute) return null;
+  if (isChatRoute) return <AltNavbar closeHref="/" layout="sticky" pushContent={false} />;
 
   return (
     <nav

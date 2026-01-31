@@ -3,6 +3,7 @@
 import React from "react";
 import { Playfair_Display } from "next/font/google";
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { issueMessages } from "@/app/collections/issueMessages";
 import { issues, type Issue } from "@/app/collections/issues";
@@ -11,6 +12,7 @@ import { StripeIcon } from "@/app/components/icons/stripe-icon";
 import { GitHubIcon } from "@/app/components/icons/github-icon";
 import { LinearIcon } from "@/app/components/icons/linear-icon";
 import { ExaIcon } from "@/app/components/icons/exa-icon";
+import { useChat } from "@/app/components/chat/chat-context";
 
 const playfairDisplay = Playfair_Display({
   weight: ["500"],
@@ -24,7 +26,7 @@ const SUGGESTIONS = [
   "What can you do?",
 ] as const;
 
-type PromptVariant = "home" | "issues";
+type PromptVariant = "home" | "issues" | "chat";
 type NavDirection = "toIssues" | "toHome";
 
 type ConnectionKey = "stripe" | "github" | "linear" | "exa";
@@ -261,6 +263,25 @@ function serializeComposer(root: HTMLElement): string {
   return out;
 }
 
+function insertTextAtCaret(text: string) {
+  if (typeof window === "undefined") return;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+
+  // Move caret to end of inserted text node.
+  const next = document.createRange();
+  next.setStart(node, node.data.length);
+  next.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(next);
+}
+
 export function Prompt({
   variant = "home",
   isNavigating = false,
@@ -272,6 +293,8 @@ export function Prompt({
   navDirection?: NavDirection | null;
   issueIdForComment?: string | null;
 }) {
+  const router = useRouter();
+  const chat = useChat();
   const composerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const inputAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -284,12 +307,13 @@ export function Prompt({
   const [activeConnectionIndex, setActiveConnectionIndex] = useState(0);
 
   const isEmpty = useMemo(() => serializedValue.trim().length === 0, [serializedValue]);
-  const hideExtras = variant === "issues";
+  const hideExtras = variant !== "home";
   const fadeNearEdgeDelay = isNavigating ? "delay-[420ms]" : "delay-0";
   const collapseNearBottomDelay =
     isNavigating && navDirection === "toIssues" ? "delay-[420ms]" : "delay-0";
 
   const canSendComment = variant === "issues" && !!issueIdForComment;
+  const canSendChatMessage = variant === "home" || variant === "chat";
 
   const atContext = useMemo(
     () => getAtContext(displayValue, cursorIndex),
@@ -328,6 +352,15 @@ export function Prompt({
     }
   };
 
+  const resetComposer = () => {
+    setDisplayValue("");
+    setSerializedValue("");
+    setCursorIndex(0);
+    const root = composerRef.current;
+    if (root) root.innerHTML = "";
+    composerRef.current?.focus();
+  };
+
   const sendComment = () => {
     if (!canSendComment) return;
     if (isEmpty) return;
@@ -355,12 +388,23 @@ export function Prompt({
       draft.updatedAt = now;
     });
 
-    setDisplayValue("");
-    setSerializedValue("");
-    setCursorIndex(0);
-    const root = composerRef.current;
-    if (root) root.innerHTML = "";
-    composerRef.current?.focus();
+    resetComposer();
+  };
+
+  const sendChatMessage = () => {
+    if (!canSendChatMessage) return;
+    if (isEmpty) return;
+
+    const msg = serializedValue.trim();
+    if (variant === "home") {
+      chat.clear();
+      chat.appendUserMessage(msg);
+      router.push("/chat");
+    } else {
+      chat.appendUserMessage(msg);
+    }
+
+    resetComposer();
   };
 
   const resetActiveIndexIfAtContextChanged = (next: AtContext | null) => {
@@ -430,7 +474,7 @@ export function Prompt({
     requestAnimationFrame(() => syncFromComposer());
   };
 
-  const dropdownSide = variant === "issues" ? ("top" as const) : ("bottom" as const);
+  const dropdownSide = variant === "issues" || variant === "chat" ? ("top" as const) : ("bottom" as const);
 
   return (
     <div
@@ -496,7 +540,7 @@ export function Prompt({
                 >
                   <div
                     ref={inputAnchorRef}
-                    className="relative grid h-10 w-full grid-cols-1 grid-rows-1 overflow-hidden"
+                    className="relative w-full"
                   >
                     <div
                       ref={composerRef}
@@ -504,11 +548,11 @@ export function Prompt({
                       suppressContentEditableWarning
                       aria-label="Ask anything..."
                       className={[
-                        "h-full w-full bg-transparent p-2",
+                        "min-h-10 w-full bg-transparent p-2",
+                        "max-h-40 overflow-y-auto hide-scrollbar",
                         "text-sm leading-[21px] text-orchid-ink",
                         "whitespace-pre-wrap break-words",
                         "outline-none",
-                        "overflow-hidden",
                       ].join(" ")}
                       onInput={() => syncFromComposer()}
                       onSelect={() => syncFromComposer()}
@@ -542,10 +586,25 @@ export function Prompt({
                           }
                         }
 
-                        if (!canSendComment) return;
-                        if (e.key === "Enter" && !e.shiftKey) {
+                        // Newline behavior:
+                        // - Home/chat: Enter sends, Shift+Enter inserts a newline.
+                        // - Comment mode: Enter sends, Shift+Enter inserts a newline.
+                        if (e.key === "Enter") {
+                          if (canSendComment && !e.shiftKey) {
+                            e.preventDefault();
+                            sendComment();
+                            return;
+                          }
+
+                          if (canSendChatMessage && !e.shiftKey) {
+                            e.preventDefault();
+                            sendChatMessage();
+                            return;
+                          }
+
                           e.preventDefault();
-                          sendComment();
+                          insertTextAtCaret("\n");
+                          requestAnimationFrame(() => syncFromComposer());
                         }
                       }}
                       onKeyUp={() => syncFromComposer()}
@@ -703,15 +762,20 @@ export function Prompt({
                     : "group/button focus-visible:ring-neutral-strong relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
                 ].join(" ")}
                 onClick={() => {
-                  if (!canSendComment) return;
-                  sendComment();
+                  if (canSendComment) {
+                    sendComment();
+                    return;
+                  }
+                  if (canSendChatMessage) {
+                    sendChatMessage();
+                  }
                 }}
               >
                 {!isEmpty && (
                   <div className="absolute inset-0 rounded-orchid-pill border border-neutral bg-gradient-to-t from-surface to-surface shadow-xs transition-transform group-hover/button:to-surface-weak group-active/button:inset-shadow-xs group-active/button:shadow-none group-active/button:to-surface-subtle" />
                 )}
                 <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-ink">
-                  <span className="px-[2px]">{canSendComment ? "Comment" : "Go"}</span>
+                  <span className="px-[2px]">{canSendComment ? "Comment" : canSendChatMessage ? "Send" : "Go"}</span>
                   <span className="hidden h-4 items-center rounded border border-neutral bg-surface-weak px-1 text-[12px] leading-[17.6px] text-orchid-placeholder shadow-xs md:inline-flex">
                     ↵
                   </span>
