@@ -11,6 +11,7 @@ import { PaperclipIcon } from "@/app/components/icons/paperclip-icon";
 import { MenuDropdown, type MenuDropdownItem } from "@/app/components/menu-dropdown";
 import { api } from "@/convex/_generated/api";
 import { CheckCircleIcon } from "@/app/components/icons/check-circle-icon";
+import { useReplicateInitState } from "@/app/components/replicate-context";
 
 export type BugIssueArtifactDraft = {
   title: string;
@@ -109,9 +110,48 @@ function appendSection(out: string, heading: string, content: string) {
 }
 
 export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtifactDraft }) {
+  const { ready, error, retry } = useReplicateInitState();
+
+  if (!ready) {
+    return (
+      <div className="not-prose text-copy w-full font-orchid-ui text-sm leading-6 text-orchid-muted">
+        Initializing offline storage…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="not-prose text-copy w-full font-orchid-ui text-sm leading-6 text-orchid-ink">
+        <div className="font-medium">Failed to initialize offline storage</div>
+        <div className="mt-1 text-orchid-muted">{error.message}</div>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            className="pointer-events-auto inline-flex h-8 items-center rounded-orchid-pill border border-neutral bg-white px-3 text-sm font-medium text-orchid-ink shadow-xs"
+            onClick={retry}
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            className="pointer-events-auto inline-flex h-8 items-center rounded-orchid-pill border border-neutral bg-white px-3 text-sm font-medium text-orchid-ink shadow-xs"
+            onClick={() => window.location.reload()}
+          >
+            Reload page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <BugIssueArtifactReady initialDraft={initialDraft} />;
+}
+
+function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifactDraft }) {
   const router = useRouter();
-  const issues = issuesCollection.get();
   const enqueueIssueSync = useMutation(api.githubIssues.enqueueIssueSync);
+  const issues = issuesCollection.get();
 
   const initialTitle = initialDraft.title ?? "";
   const initialBody = initialDraft.body?.trim() ?? "";

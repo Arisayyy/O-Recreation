@@ -73,12 +73,12 @@ export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
 
               <div className="flex min-w-0 flex-1 flex-row items-center gap-1">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="text-sm leading-[21px] text-orchid-ink">
+                  <span className="shrink-0 whitespace-nowrap text-sm leading-[21px] text-orchid-ink">
                     {item.draftTitle}
                   </span>
                   <span
                     className={[
-                      "min-w-0 text-sm leading-[21px] text-orchid-muted",
+                      "min-w-0 flex-1 text-sm leading-[21px] text-orchid-muted",
                       "truncate",
                     ].join(" ")}
                     title={item.draftBody}

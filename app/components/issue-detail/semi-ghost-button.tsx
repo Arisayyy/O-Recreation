@@ -7,12 +7,14 @@ export const semiGhostButtonBaseClass = [
   "group/button relative inline-flex h-7 shrink-0 cursor-pointer items-center rounded-lg",
   "whitespace-nowrap bg-transparent transition-transform outline-none select-none",
   "focus-visible:ring-2 focus-visible:ring-orchid-ink",
+  "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
 ].join(" ");
 
 export const semiGhostButtonBgClass = [
   "absolute inset-0 rounded-lg border border-transparent bg-surface-weak transition-transform",
   "group-hover/button:bg-surface-strong group-hover/button:border-neutral group-hover/button:shadow-xs",
   "group-active/button:inset-shadow-xs dark:group-active/button:inset-shadow-xs-strong group-active/button:shadow-none",
+  "group-disabled/button:bg-transparent group-disabled/button:border-transparent group-disabled/button:shadow-none",
 ].join(" ");
 
 export const semiGhostButtonInnerClass =
@@ -26,6 +28,7 @@ export function SemiGhostButton({
   className,
   type = "button",
   onClick,
+  ...buttonProps
 }: {
   label?: string;
   keycap?: string;
@@ -34,16 +37,19 @@ export function SemiGhostButton({
   className?: string;
   type?: "button" | "submit" | "reset";
   onClick?: () => void;
-}) {
+} & Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "type" | "disabled" | "onClick" | "className" | "children"
+>) {
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
+      {...buttonProps}
       className={[
         semiGhostButtonBaseClass,
         "px-1.5",
-        disabled ? "cursor-not-allowed opacity-50" : "",
         className ?? "",
       ].join(" ")}
     >

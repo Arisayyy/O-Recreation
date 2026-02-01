@@ -10,9 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.66",
-    "@auth/core": "0.37.0",
     "@base-ui/react": "^1.1.0",
-    "@convex-dev/auth": "^0.0.90",
     "@lexical/code": "^0.39.0",
     "@lexical/history": "^0.39.0",
     "@lexical/link": "^0.39.0",

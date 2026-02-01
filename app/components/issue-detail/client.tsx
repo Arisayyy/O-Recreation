@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
+import { useRouter } from "next/navigation";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { issueMessages as issueMessagesCollection } from "@/app/collections/issueMessages";
 import { IssueDetailHeader } from "./header";
@@ -12,11 +13,53 @@ import { formatRelativeTime } from "@/app/lib/relative-time";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
 import { useIssueChat } from "@/app/components/issue-detail/issue-chat-context";
 import { getToolName, isToolUIPart } from "ai";
+import { useReplicateInitState } from "@/app/components/replicate-context";
 
 // Space reserved for the fixed prompt at the bottom of the page.
 const BOTTOM_PADDING_PX = 164;
 
 export function IssueDetailClient({ issueId }: { issueId: string }) {
+  const { ready, error, retry } = useReplicateInitState();
+
+  // Don't call hooks that require the collections until Replicate is initialized.
+  if (!ready) {
+    return (
+      <div className="p-5 font-orchid-ui text-sm leading-6 text-orchid-muted">
+        Loading…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-5 font-orchid-ui text-sm leading-6 text-orchid-ink">
+        <div className="font-medium">Failed to initialize offline storage</div>
+        <div className="mt-1 text-orchid-muted">{error.message}</div>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex h-8 items-center rounded-orchid-pill border border-neutral bg-white px-3 text-sm font-medium text-orchid-ink shadow-xs"
+            onClick={retry}
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-8 items-center rounded-orchid-pill border border-neutral bg-white px-3 text-sm font-medium text-orchid-ink shadow-xs"
+            onClick={() => window.location.reload()}
+          >
+            Reload page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <IssueDetailClientReady issueId={issueId} />;
+}
+
+function IssueDetailClientReady({ issueId }: { issueId: string }) {
+  const router = useRouter();
   const issues = issuesCollection.get();
   const messages = issueMessagesCollection.get();
   const issueChat = useIssueChat();
@@ -66,11 +109,110 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
     [issueList, issueId],
   );
 
+  // Mirror the inbox ordering (IssuesInboxList): updatedAt desc.
+  const orderedIssueIds = useMemo(() => {
+    return [...(issueList ?? [])]
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .map((i) => i.id);
+  }, [issueList]);
+
+  const navigateIssueRelative = useCallback(
+    (delta: -1 | 1) => {
+      if (orderedIssueIds.length === 0) return;
+      const idx = orderedIssueIds.indexOf(issueId);
+      if (idx < 0) return;
+      const nextIdx = idx + delta;
+      if (nextIdx < 0 || nextIdx >= orderedIssueIds.length) return;
+      const nextId = orderedIssueIds[nextIdx];
+      if (!nextId || nextId === issueId) return;
+      router.push(`/issues/${encodeURIComponent(nextId)}`);
+    },
+    [issueId, orderedIssueIds, router],
+  );
+
+  const { canPrevIssue, canNextIssue } = useMemo(() => {
+    const idx = orderedIssueIds.indexOf(issueId);
+    if (idx < 0) return { canPrevIssue: false, canNextIssue: false };
+    return {
+      canPrevIssue: idx > 0,
+      canNextIssue: idx < orderedIssueIds.length - 1,
+    };
+  }, [issueId, orderedIssueIds]);
+
   const openReply = useCallback(() => {
     const name = issue?.createdBy?.name ?? "Anonymous";
     const avatarId = issue?.createdBy?.avatar ?? name;
     openReplyTo({ name, avatarId });
   }, [issue?.createdBy?.avatar, issue?.createdBy?.name, openReplyTo]);
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return true;
+      if (target.isContentEditable) return true;
+      if (target.closest?.('[contenteditable="true"]')) return true;
+      return false;
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.isComposing) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isEditableTarget(event.target)) return;
+
+      const clickHotkeyTarget = (selector: string) => {
+        const el = document.querySelector(selector);
+        if (!(el instanceof HTMLElement)) return false;
+        const btn = (el.closest("button") as HTMLButtonElement | null) ?? null;
+        if (btn && !btn.disabled) {
+          btn.click();
+          return true;
+        }
+        if ((el as any).click && !(el as any).disabled) {
+          (el as any).click();
+          return true;
+        }
+        return false;
+      };
+
+      const key = event.key.toLowerCase();
+      const action =
+        key === "k"
+          ? "issue_detail_prev_issue"
+          : key === "j"
+            ? "issue_detail_next_issue"
+            : key === "e"
+              ? "issue_detail_mark_done"
+              : key === "r"
+                ? "issue_detail_reply"
+                : key === "s"
+                  ? "issue_detail_status_menu"
+                  : key === "g"
+                    ? "issue_detail_open_github"
+                : null;
+
+      if (!action) return;
+      event.preventDefault();
+      console.log("[issue-detail hotkey]", { action, key, issueId });
+
+      if (action === "issue_detail_prev_issue") {
+        navigateIssueRelative(-1);
+      }
+      if (action === "issue_detail_next_issue") {
+        navigateIssueRelative(1);
+      }
+      if (action === "issue_detail_status_menu") {
+        clickHotkeyTarget('[data-issue-detail-status-trigger="true"]');
+      }
+      if (action === "issue_detail_open_github") {
+        clickHotkeyTarget('[data-issue-detail-github-button="true"]');
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [issueId, navigateIssueRelative]);
 
   const issueContextText = useMemo(() => {
     if (!issue) return "";
@@ -447,6 +589,10 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
       <IssueDetailHeader
         title={issue.title}
         onReply={openReply}
+        onPrevIssue={() => navigateIssueRelative(-1)}
+        onNextIssue={() => navigateIssueRelative(1)}
+        prevIssueDisabled={!canPrevIssue}
+        nextIssueDisabled={!canNextIssue}
         githubIssueUrl={(issue as any).githubIssueUrl}
         githubSyncStatus={(issue as any).githubSyncStatus}
         githubSyncError={(issue as any).githubSyncError}

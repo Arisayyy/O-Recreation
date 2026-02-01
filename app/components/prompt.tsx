@@ -64,6 +64,8 @@ const CONNECTION_ITEMS: ReadonlyArray<ConnectionItem> = [
   },
 ] as const;
 
+const MAX_ATTACHMENTS = 10;
+
 function menuPanelClassName() {
   // Match the dropdown panel structure in the reference design.
   return [
@@ -85,6 +87,35 @@ function menuItemBgClassName() {
     "group-data-[highlighted]/zhover:opacity-100 group-data-[highlighted]/zhover:inset-0",
     "group-active/zhover:!inset-0.5",
   ].join(" ");
+}
+
+function hoverActionButtonClass() {
+  return [
+    "group/button focus-visible:ring-neutral-strong",
+    "relative inline-flex shrink-0 cursor-pointer",
+    "rounded-lg whitespace-nowrap outline-none transition-transform select-none",
+    "focus-visible:ring-2",
+    "h-7 px-1.5",
+  ].join(" ");
+}
+
+function hoverActionButtonBgClass() {
+  return [
+    "absolute rounded-lg border transition-transform",
+    "border-transparent bg-surface-strong opacity-0",
+    "inset-2 blur-sm",
+    "group-hover/button:opacity-100 group-hover/button:blur-none group-hover/button:inset-0",
+    "group-active/button:inset-shadow-xs dark:group-active/button:inset-shadow-xs-strong group-active/button:shadow-none",
+  ].join(" ");
+}
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"] as const;
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** i;
+  const digits = i === 0 ? 0 : value >= 10 ? 1 : 1;
+  return `${value.toFixed(digits)} ${units[i]}`;
 }
 
 type AtContext = { atIndex: number; query: string };
@@ -303,13 +334,17 @@ export function Prompt({
   const lastAtContextRef = useRef<AtContext | null>(null);
   const prevVariantRef = useRef<PromptVariant | null>(null);
 
+  type PendingFile = { part: FileUIPart; size: number };
+
   const [displayValue, setDisplayValue] = useState("");
   const [serializedValue, setSerializedValue] = useState("");
   const [cursorIndex, setCursorIndex] = useState(0);
   const [dismissedAtIndex, setDismissedAtIndex] = useState<number | null>(null);
   const [activeConnectionIndex, setActiveConnectionIndex] = useState(0);
-  const [pendingFiles, setPendingFiles] = useState<FileUIPart[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [areAttachmentsExpanded, setAreAttachmentsExpanded] = useState(false);
 
   const isEmpty = useMemo(() => serializedValue.trim().length === 0, [serializedValue]);
   const hideExtras = variant !== "home";
@@ -391,7 +426,7 @@ export function Prompt({
     const msg = serializedValue.trim();
     const parts = [
       ...(msg.length ? [{ type: "text" as const, text: msg }] : []),
-      ...pendingFiles,
+      ...pendingFiles.map((p) => p.part),
     ];
 
     void issueChat.sendMessage({ role: "user", parts });
@@ -412,7 +447,7 @@ export function Prompt({
     const msg = serializedValue.trim();
     const parts = [
       ...(msg.length ? [{ type: "text" as const, text: msg }] : []),
-      ...pendingFiles,
+      ...pendingFiles.map((p) => p.part),
     ];
 
     if (variant === "home" || variant === "issues") {
@@ -442,20 +477,42 @@ export function Prompt({
 
     setIsUploadingFiles(true);
     try {
+      setUploadError(null);
+
+      const existingCount = pendingFiles.length;
+      const remainingSlots = MAX_ATTACHMENTS - existingCount;
+      if (remainingSlots <= 0) {
+        setUploadError(`Maximum of ${MAX_ATTACHMENTS} attachments reached.`);
+        return;
+      }
+
+      const all = Array.from(files);
+      const toUpload = all.length > remainingSlots ? all.slice(0, remainingSlots) : all;
+      if (all.length > remainingSlots) {
+        setUploadError(
+          `Only ${remainingSlots} more attachment${
+            remainingSlots === 1 ? "" : "s"
+          } allowed (max ${MAX_ATTACHMENTS}). Extra files were ignored.`,
+        );
+      }
+
       const uploaded = await Promise.all(
-        Array.from(files).map(async (file) => {
+        toUpload.map(async (file) => {
           const res = await uploadToUploadsRoute({ file, prefix: "uploads/chat/" });
           const url = res.publicUrl ?? res.presignedUrl;
-          return {
+          const part = {
             type: "file" as const,
             mediaType: file.type || "application/octet-stream",
             filename: file.name,
             url,
           } satisfies FileUIPart;
+          return { part, size: file.size } satisfies PendingFile;
         }),
       );
 
       setPendingFiles((prev) => [...prev, ...uploaded]);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
       setIsUploadingFiles(false);
       // allow selecting the same file twice
@@ -614,10 +671,10 @@ export function Prompt({
 
           {/* Input */}
           <div className="rounded-orchid-prompt-inner bg-white shadow-orchid-prompt">
-            <div className="pl-[6px]">
-              <div className="flex items-center pr-2">
+            <div className="pl-1.5">
+              <div className="flex w-full items-center pr-2">
                 <div
-                  className="relative flex-1 cursor-text pl-[6px]"
+                  className="relative flex flex-1 cursor-text pl-1.5 transition-colors [--lh:1lh]"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     composerRef.current?.focus();
@@ -625,7 +682,7 @@ export function Prompt({
                 >
                   <div
                     ref={inputAnchorRef}
-                    className="relative w-full"
+                    className="relative grid w-full overflow-hidden"
                   >
                     <div
                       ref={composerRef}
@@ -633,7 +690,7 @@ export function Prompt({
                       suppressContentEditableWarning
                       aria-label="Ask anything..."
                       className={[
-                        "min-h-10 w-full bg-transparent p-2",
+                        "min-h-[2.5rem] w-full bg-transparent p-2",
                         "max-h-40 overflow-y-auto hide-scrollbar",
                         "text-sm leading-[21px] text-orchid-ink",
                         "whitespace-pre-wrap break-words",
@@ -789,6 +846,199 @@ export function Prompt({
               </div>
             </div>
 
+            {/* Attachments (spacing + structure matched to reference) */}
+            {pendingFiles.length > 0 ? (
+              <div className="ease-out-expo grid overflow-hidden transition-transform duration-300 grid-rows-[1fr] p-2">
+                <div className="px-1 py-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      className={hoverActionButtonClass()}
+                      aria-label={areAttachmentsExpanded ? "Collapse attachments" : "Expand attachments"}
+                      onClick={() => setAreAttachmentsExpanded((v) => !v)}
+                    >
+                      <div aria-hidden="true" className={hoverActionButtonBgClass()} />
+                      <div className="relative z-10 flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
+                        <div className="px-0.5 leading-0 transition-transform">
+                          {pendingFiles.length}{" "}
+                          {pendingFiles.length === 1 ? "Attachment" : "Attachments"}
+                        </div>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                          aria-hidden="true"
+                          className={[
+                            "size-4 transition-transform",
+                            areAttachmentsExpanded ? "rotate-90" : "",
+                          ].join(" ")}
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    </button>
+
+                    <div className="ease-out-expo flex items-center gap-1 transition-transform duration-300">
+                      {!areAttachmentsExpanded ? (
+                        <div className="ease-out-expo flex items-center gap-1 transition-transform duration-300">
+                          {pendingFiles.slice(0, 1).map((f, i) => (
+                            <div
+                              key={`${f.part.url}-${i}`}
+                              className="bg-surface-subtle hover:bg-surface-strong transition-colors group/item relative inline-flex h-7 max-w-[250px] items-center gap-1.5 rounded-md px-2 duration-150 select-none cursor-pointer"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 16 16"
+                                fill="currentColor"
+                                aria-hidden="true"
+                                className="text-orchid-muted h-3 w-3 min-w-3 shrink-0"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M2 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4Zm10.5 5.707a.5.5 0 0 0-.146-.353l-1-1a.5.5 0 0 0-.708 0L9.354 9.646a.5.5 0 0 1-.708 0L6.354 7.354a.5.5 0 0 0-.708 0l-2 2a.5.5 0 0 0-.146.353V12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9.707ZM12 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+
+                              <a
+                                href={f.part.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex min-w-0 flex-1 items-center gap-1.5"
+                              >
+                                <span className="text-[12px] font-medium leading-[17.6px] text-orchid-ink line-clamp-1 min-w-0 truncate">
+                                  {f.part.filename ?? "attachment"}
+                                </span>
+                                {Number.isFinite(f.size) ? (
+                                  <span className="text-[12px] leading-[17.6px] text-orchid-muted whitespace-nowrap shrink-0">
+                                    {formatBytes(f.size)}
+                                  </span>
+                                ) : null}
+                              </a>
+
+                              <div className="absolute -top-1 -right-1 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${f.part.filename ?? "attachment"}`}
+                                  className="group/button focus-visible:ring-neutral-strong relative inline-flex shrink-0 cursor-pointer rounded-lg whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2 size-5 min-w-5 min-h-5"
+                                  onClick={() =>
+                                    setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))
+                                  }
+                                >
+                                  <div
+                                    aria-hidden="true"
+                                    className={[
+                                      "absolute rounded-lg border transition-transform bg-gradient-to-t from-surface to-surface border-neutral shadow-xs inset-0",
+                                      "group-hover/button:to-surface-weak dark:group-hover/button:to-surface-strong",
+                                      "group-active/button:inset-shadow-xs dark:group-active/button:inset-shadow-xs-strong group-active/button:shadow-none group-active/button:to-surface-subtle",
+                                    ].join(" ")}
+                                  />
+                                  <div className="text-copy relative z-10 flex items-center gap-1 w-full justify-center text-orchid-ink">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 16 16"
+                                      fill="currentColor"
+                                      aria-hidden="true"
+                                      className="size-4 transition-transform"
+                                    >
+                                      <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+                                    </svg>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div
+                    className={[
+                      "ease-out-expo grid overflow-hidden transition-transform duration-300",
+                      areAttachmentsExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                    ].join(" ")}
+                  >
+                    <div className="min-h-0">
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {pendingFiles.map((f, i) => (
+                          <div
+                            key={`${f.part.url}-${i}`}
+                            className="bg-surface-subtle hover:bg-surface-strong transition-colors group/item relative inline-flex h-7 max-w-[250px] items-center gap-1.5 rounded-md px-2 duration-150 select-none cursor-pointer"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              aria-hidden="true"
+                              className="text-orchid-muted h-3 w-3 min-w-3 shrink-0"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M2 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4Zm10.5 5.707a.5.5 0 0 0-.146-.353l-1-1a.5.5 0 0 0-.708 0L9.354 9.646a.5.5 0 0 1-.708 0L6.354 7.354a.5.5 0 0 0-.708 0l-2 2a.5.5 0 0 0-.146.353V12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9.707ZM12 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+
+                            <a
+                              href={f.part.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex min-w-0 items-center gap-1.5 flex-1"
+                            >
+                              <span className="text-[12px] font-medium leading-[17.6px] text-orchid-ink line-clamp-1 min-w-0 truncate">
+                                {f.part.filename ?? "attachment"}
+                              </span>
+                              {Number.isFinite(f.size) ? (
+                                <span className="text-[12px] leading-[17.6px] text-orchid-muted whitespace-nowrap shrink-0">
+                                  {formatBytes(f.size)}
+                                </span>
+                              ) : null}
+                            </a>
+
+                            <div className="absolute -top-1 -right-1 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
+                              <button
+                                type="button"
+                                aria-label={`Remove ${f.part.filename ?? "attachment"}`}
+                                className="group/button focus-visible:ring-neutral-strong relative inline-flex shrink-0 cursor-pointer rounded-lg whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2 size-5 min-w-5 min-h-5"
+                                onClick={() =>
+                                  setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))
+                                }
+                              >
+                                <div
+                                  aria-hidden="true"
+                                  className={[
+                                    "absolute rounded-lg border transition-transform bg-gradient-to-t from-surface to-surface border-neutral shadow-xs inset-0",
+                                    "group-hover/button:to-surface-weak dark:group-hover/button:to-surface-strong",
+                                    "group-active/button:inset-shadow-xs dark:group-active/button:inset-shadow-xs-strong group-active/button:shadow-none group-active/button:to-surface-subtle",
+                                  ].join(" ")}
+                                />
+                                <div className="text-copy relative z-10 flex items-center gap-1 w-full justify-center text-orchid-ink">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 16 16"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                    className="size-4 transition-transform"
+                                  >
+                                    <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+                                  </svg>
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="grid grid-rows-[0px] overflow-hidden transition-[transform,translate,scale,rotate] duration-300 ease-[cubic-bezier(0.19,1,0.22,1)]" />
             <div className="flex-1 overflow-auto" />
           </div>
@@ -806,8 +1056,16 @@ export function Prompt({
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                disabled={isUploadingFiles || pendingFiles.length >= MAX_ATTACHMENTS}
                 className="group/button relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2 focus-visible:ring-orchid-ink"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (isUploadingFiles) return;
+                  if (pendingFiles.length >= MAX_ATTACHMENTS) {
+                    setUploadError(`Maximum of ${MAX_ATTACHMENTS} attachments reached.`);
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }}
               >
                 <div className="absolute inset-2 rounded-orchid-pill border border-transparent bg-orchid-surface-2 opacity-0 blur-sm transition-transform group-hover/button:inset-0 group-hover/button:opacity-100 group-hover/button:blur-none group-active/button:inset-shadow-xs group-active/button:shadow-none" />
                 <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
@@ -820,9 +1078,15 @@ export function Prompt({
                   >
                     <path d="M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z" />
                   </svg>
-                  <span className="px-[2px]">Add files</span>
+                  <span className="px-[2px]">{isUploadingFiles ? "Uploading…" : "Add files"}</span>
                 </div>
               </button>
+
+              {uploadError ? (
+                <div className="text-[12px] leading-[17.6px] text-red-600 dark:text-red-400">
+                  {uploadError}
+                </div>
+              ) : null}
 
               <button
                 type="button"
@@ -897,23 +1161,6 @@ export function Prompt({
           </div>
         </div>
       </div>
-
-      {/* Pending uploads */}
-      {pendingFiles.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-          {pendingFiles.map((f, i) => (
-            <button
-              key={`${f.url}-${i}`}
-              type="button"
-              className="rounded-orchid-pill border border-neutral bg-surface px-2 py-1 text-xs text-orchid-muted hover:text-orchid-ink"
-              onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
-              title="Remove attachment"
-            >
-              {f.filename ?? "attachment"} <span className="ml-1 opacity-70">×</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       <div
         aria-hidden={hideExtras}

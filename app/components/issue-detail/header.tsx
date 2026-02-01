@@ -17,6 +17,10 @@ import { IssueStatusIcon, formatIssueStatusLabel, type IssueStatusKey } from "@/
 export function IssueDetailHeader({
   title,
   onReply,
+  onPrevIssue,
+  onNextIssue,
+  prevIssueDisabled,
+  nextIssueDisabled,
   githubIssueUrl,
   githubSyncStatus,
   status,
@@ -24,6 +28,10 @@ export function IssueDetailHeader({
 }: {
   title: string;
   onReply?: () => void;
+  onPrevIssue?: () => void;
+  onNextIssue?: () => void;
+  prevIssueDisabled?: boolean;
+  nextIssueDisabled?: boolean;
   githubIssueUrl?: string | null;
   githubSyncStatus?: "pending" | "creating" | "synced" | "error" | null;
   githubSyncError?: string | null;
@@ -35,7 +43,6 @@ export function IssueDetailHeader({
     { value: "todo", label: "Todo" },
     { value: "in_progress", label: "In Progress" },
     { value: "in_review", label: "In Review" },
-    { value: "done", label: "Done" },
     { value: "canceled", label: "Cancelled" },
   ];
 
@@ -49,6 +56,8 @@ export function IssueDetailHeader({
             <SemiGhostButton
               icon={<GitHubIcon className="h-4 w-4" />}
               label="Open in GitHub"
+              keycap="G"
+              data-issue-detail-github-button="true"
               onClick={() => {
                 window.open(githubIssueUrl, "_blank", "noreferrer");
               }}
@@ -57,12 +66,16 @@ export function IssueDetailHeader({
             <SemiGhostButton
               icon={<GitHubIcon className="h-4 w-4" />}
               label="Syncing"
+              keycap="G"
+              data-issue-detail-github-button="true"
               disabled
             />
           ) : githubSyncStatus === "error" ? (
             <SemiGhostButton
               icon={<GitHubIcon className="h-4 w-4" />}
               label="GitHub"
+              keycap="G"
+              data-issue-detail-github-button="true"
               disabled
             />
           ) : null}
@@ -72,9 +85,14 @@ export function IssueDetailHeader({
             items={STATUS_ITEMS}
             onChangeAction={onStatusChangeAction}
             align="end"
+            numericKeycaps
+            numericHotkeys
             triggerClassName="outline-none"
             trigger={
-              <div className={[semiGhostButtonBaseClass, "px-1.5"].join(" ")}>
+              <div
+                data-issue-detail-status-trigger="true"
+                className={[semiGhostButtonBaseClass, "px-1.5"].join(" ")}
+              >
                 <div className={semiGhostButtonBgClass} />
                 <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
                   <span className="block h-4 w-4 transition-transform">
@@ -96,13 +114,34 @@ export function IssueDetailHeader({
                       clipRule="evenodd"
                     />
                   </svg>
+                  <span
+                    className={[
+                      "bg-surface-weak border-neutral text-orchid-placeholder shadow-xs",
+                      "inline-flex h-4 items-center rounded border px-1",
+                      "text-[12px] leading-[17.6px]",
+                    ].join(" ")}
+                  >
+                    S
+                  </span>
                 </div>
               </div>
             }
           />
 
-          <SemiGhostButton icon={<ChevronUpIcon className="h-4 w-4" />} keycap="K" className="w-[50.0625px]" />
-          <SemiGhostButton icon={<ChevronDownIcon className="h-4 w-4" />} keycap="J" className="w-[48.8594px]" />
+          <SemiGhostButton
+            icon={<ChevronUpIcon className="h-4 w-4" />}
+            keycap="K"
+            className="w-[50.0625px]"
+            onClick={onPrevIssue}
+            disabled={prevIssueDisabled}
+          />
+          <SemiGhostButton
+            icon={<ChevronDownIcon className="h-4 w-4" />}
+            keycap="J"
+            className="w-[48.8594px]"
+            onClick={onNextIssue}
+            disabled={nextIssueDisabled}
+          />
           <SemiGhostButton icon={<CheckIcon className="h-4 w-4" />} label="Done" keycap="E" className="w-[92.1562px]" />
           <SemiGhostButton
             icon={<ReplyIcon className="h-4 w-4" />}

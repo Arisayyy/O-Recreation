@@ -3,9 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/app/components/navbar";
 import { ReplicateProvider } from "@/app/components/replicate-provider";
-import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { ConvexClientProvider } from "./ConvexClientProvider";
-import { EnsureAnonymousUser } from "./EnsureAnonymousUser";
 
 
 const geistSans = Geist({
@@ -33,21 +31,20 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ConvexAuthNextjsServerProvider>
         <ConvexClientProvider>
-        <EnsureAnonymousUser />
-        <ReplicateProvider>
-          <div className="flex min-h-screen flex-col bg-background text-foreground">
-            <main className="relative flex min-h-0 flex-1 flex-col">
-              <div className="flex min-h-0 flex-1 flex-col">
-                <Navbar />
-                <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-              </div>
-            </main>
-          </div>
-        </ReplicateProvider>
+          <ReplicateProvider>
+            <div className="flex min-h-screen flex-col bg-background text-foreground">
+              <main className="relative flex min-h-0 flex-1 flex-col">
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <Navbar />
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    {children}
+                  </div>
+                </div>
+              </main>
+            </div>
+          </ReplicateProvider>
         </ConvexClientProvider>
-        </ConvexAuthNextjsServerProvider>
       </body>
     </html>
   );
