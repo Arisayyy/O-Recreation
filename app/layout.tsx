@@ -5,6 +5,11 @@ import { Navbar } from "@/app/components/navbar";
 import { ReplicateProvider } from "@/app/components/replicate-provider";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+const siteTitle = "Not Orchid";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +22,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Orchid",
-  description: "Orchid",
+  metadataBase: new URL(siteUrl),
+  title: siteTitle,
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      nosnippet: true,
+      noarchive: true,
+    },
+  },
+  openGraph: {
+    type: "website",
+    title: siteTitle,
+    siteName: siteTitle,
+    images: ["/opengraph-image"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    images: ["/twitter-image"],
+  },
 };
 
 export default function RootLayout({
