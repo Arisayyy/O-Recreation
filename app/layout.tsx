@@ -26,6 +26,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: siteTitle,
   description: siteDescription,
+  alternates: {
+    canonical: "/",
+  },
   robots: {
     index: false,
     follow: false,
@@ -40,6 +43,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
+    url: "/",
     title: siteTitle,
     description: siteDescription,
     siteName: siteTitle,
