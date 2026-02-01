@@ -5,9 +5,18 @@ import { Navbar } from "@/app/components/navbar";
 import { ReplicateProvider } from "@/app/components/replicate-provider";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+function getSiteUrl() {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicit) return explicit;
+  if (process.env.VERCEL_ENV === "production") {
+    const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    if (prod) return `https://${prod}`;
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
+const siteUrl = getSiteUrl();
 
 const siteTitle = "Not Orchid";
 const siteDescription = "Educational recreation of Orchid.";
