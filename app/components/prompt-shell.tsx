@@ -6,137 +6,10 @@ import { Prompt } from "@/app/components/prompt";
 import { ChatProvider } from "@/app/components/chat/chat-context";
 import { FirstMessageSendAnimationProvider } from "@/app/components/chat/first-message-send-animation";
 import { IssueChatProvider } from "@/app/components/issue-detail/issue-chat-context";
+import { ConversationPromptBackdrop } from "@/app/components/conversation-prompt-backdrop";
 
 type PromptVariant = "home" | "issues" | "chat";
 type NavDirection = "toIssues" | "toHome";
-
-function ConversationPromptBackdrop({ className }: { className?: string }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={[
-        "pointer-events-none fixed right-0 bottom-0 z-10",
-        className ?? "inset-x-0",
-      ].join(" ")}
-      style={{ height: 200 }}
-    >
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          background:
-            "linear-gradient(to top, var(--background-color-neutral) 0%, transparent 100%)",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 1,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgb(0, 0, 0) 0%, rgba(0, 0, 0, 0) 12.5%)",
-            maskImage:
-              "linear-gradient(to top, rgb(0, 0, 0) 0%, rgba(0, 0, 0, 0) 12.5%)",
-            WebkitBackdropFilter: "blur(20px)",
-            backdropFilter: "blur(20px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 2,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgb(0, 0, 0) 0%, rgb(0, 0, 0) 12.5%, rgba(0, 0, 0, 0) 25%)",
-            maskImage:
-              "linear-gradient(to top, rgb(0, 0, 0) 0%, rgb(0, 0, 0) 12.5%, rgba(0, 0, 0, 0) 25%)",
-            WebkitBackdropFilter: "blur(11.81px)",
-            backdropFilter: "blur(11.81px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 3,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 0%, rgb(0, 0, 0) 12.5%, rgb(0, 0, 0) 25%, rgba(0, 0, 0, 0) 37.5%)",
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 0%, rgb(0, 0, 0) 12.5%, rgb(0, 0, 0) 25%, rgba(0, 0, 0, 0) 37.5%)",
-            WebkitBackdropFilter: "blur(6.97px)",
-            backdropFilter: "blur(6.97px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 4,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 12.5%, rgb(0, 0, 0) 25%, rgb(0, 0, 0) 37.5%, rgba(0, 0, 0, 0) 50%)",
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 12.5%, rgb(0, 0, 0) 25%, rgb(0, 0, 0) 37.5%, rgba(0, 0, 0, 0) 50%)",
-            WebkitBackdropFilter: "blur(4.12px)",
-            backdropFilter: "blur(4.12px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 5,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 25%, rgb(0, 0, 0) 37.5%, rgb(0, 0, 0) 50%, rgba(0, 0, 0, 0) 62.5%)",
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 25%, rgb(0, 0, 0) 37.5%, rgb(0, 0, 0) 50%, rgba(0, 0, 0, 0) 62.5%)",
-            WebkitBackdropFilter: "blur(2.43px)",
-            backdropFilter: "blur(2.43px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 6,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 37.5%, rgb(0, 0, 0) 50%, rgb(0, 0, 0) 62.5%, rgba(0, 0, 0, 0) 75%)",
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 37.5%, rgb(0, 0, 0) 50%, rgb(0, 0, 0) 62.5%, rgba(0, 0, 0, 0) 75%)",
-            WebkitBackdropFilter: "blur(1.43px)",
-            backdropFilter: "blur(1.43px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 7,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 50%, rgb(0, 0, 0) 62.5%, rgb(0, 0, 0) 75%, rgba(0, 0, 0, 0) 87.5%)",
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 50%, rgb(0, 0, 0) 62.5%, rgb(0, 0, 0) 75%, rgba(0, 0, 0, 0) 87.5%)",
-            WebkitBackdropFilter: "blur(0.85px)",
-            backdropFilter: "blur(0.85px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 8,
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 62.5%, rgb(0, 0, 0) 75%, rgb(0, 0, 0) 87.5%, rgba(0, 0, 0, 0) 100%)",
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0) 62.5%, rgb(0, 0, 0) 75%, rgb(0, 0, 0) 87.5%, rgba(0, 0, 0, 0) 100%)",
-            WebkitBackdropFilter: "blur(0.5px)",
-            backdropFilter: "blur(0.5px)",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
 
 function variantFromPathname(pathname: string): PromptVariant {
   if (pathname.startsWith("/chat")) return "chat";
@@ -245,7 +118,7 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
 
   const isIssues = variant === "issues";
   const isChat = variant === "chat";
-  const showConversationBackdrop = isChat || (isIssues && isIssueDetailRoute);
+  const showConversationBackdrop = isChat || isIssues;
 
   return (
     <ChatProvider>

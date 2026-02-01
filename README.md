@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## orchid (educational recreation)
 
-## Getting Started
+This repository is an **educational, non-commercial recreation** inspired by the product and UX of **`orchid.ai`** (“Orchid”).
 
-First, run the development server:
+- **Attribution / rights**: All product concepts, branding, and original work belong to the Orchid team. **All rights reserved to them.**
+- **Intent**: This repo exists to learn from great engineering and product design. We are not affiliated with them Orchid.
+- **Not production-ready**: This codebase is **not intended for production use**. It’s a learning project and is not organized/structured for that.
+
+## What this repo focuses on
+
+- **Issue creation and management**: an inbox-style workflow to create, review, and manage issues.
+- **Local-first sync**: local-first patterns and replication so the app stays responsive and usable while syncing.
+- **GitHub sync**: issues created in the app are **automatically synced** to this GitHub repo.
+
+## Tech stack
+
+- **Next.js**
+- **Convex**
+- **Vercel AI SDK**
+- **Replicate** (`@trestleinc/replicate`)
+- **Bun**
+
+## Authentication
+
+This project intentionally has **no authentication** (or only minimal identity) because it’s built as an educational recreation and a sandbox for exploring local-first + issue workflows.
+
+## Requirements
+
+- **Bun** installed (`bun --version`)
+- A **Convex** project (you’ll set it up via `bunx convex dev`)
+
+## Setup (straightforward)
+
+1) Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
+```
+
+2) Set up Convex (run in a second terminal)
+
+```bash
+bunx convex dev
+```
+
+3) Configure environment variables
+
+- Copy `.env.example` to `.env.local` and fill in values:
+
+```bash
+cp .env.example .env.local
+```
+
+The `.env.example` template includes keys for Convex, optional AI gateway access, uploads (R2), and GitHub integration.
+
+- After running `bunx convex dev`, make sure you set at least:
+  - `CONVEX_DEPLOYMENT`
+  - `NEXT_PUBLIC_CONVEX_URL`
+
+
+**Important**: the `GITHUB_*` variables are for **Convex (server-side)** functions, not the Next.js client. In real deployments, set them in your Convex environment (dashboard / CLI) rather than relying on local `.env.local`.
+
+4) Run the app
+
+```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **dev**: `bun dev`
+- **build**: `bun build`
+- **start**: `bun start`
+- **lint**: `bun lint`

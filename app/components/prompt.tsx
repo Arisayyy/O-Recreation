@@ -24,7 +24,7 @@ const playfairDisplay = Playfair_Display({
 
 const SUGGESTIONS = [
   "What's new?",
-  "Draft an email to emails that need a response",
+  "Create an Issue to the GitHub repo",
   "What can you do?",
 ] as const;
 
@@ -361,8 +361,13 @@ export function Prompt({
 
   const promptStatus = useMemo(() => {
     if (isThinking) return { kind: "thinking" as const, message: "Thinking..." };
-    if (variant === "issues" && issueChat.promptStatus?.kind === "issue_marked_done") {
-      return { kind: "issue_marked_done" as const, message: issueChat.promptStatus.message };
+    if (
+      variant === "issues" &&
+      (issueChat.promptStatus?.kind === "issue_marked_done" ||
+        issueChat.promptStatus?.kind === "reply_removed" ||
+        issueChat.promptStatus?.kind === "issue_removed")
+    ) {
+      return { kind: issueChat.promptStatus.kind, message: issueChat.promptStatus.message };
     }
     return null;
   }, [isThinking, issueChat.promptStatus, variant]);
@@ -633,7 +638,7 @@ export function Prompt({
               "font-orchid-display",
             ].join(" ")}
           >
-            Hey, Orchid Team!
+            Hey, Homo-Sapiens!
           </h1>
         </div>
       </div>

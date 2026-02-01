@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AvatarMenu } from "@/app/components/avatar-menu";
 import { AltNavbar } from "@/app/components/alt-navbar";
+import { ConversationPromptBackdrop } from "@/app/components/conversation-prompt-backdrop";
 
 type NavItem = {
   href: string;
@@ -262,13 +263,14 @@ export function Navbar() {
     <nav
       className={[
         // Keep visible while scrolling (issues/sent/done pages use nested scrolling).
-        "sticky top-0 z-80 flex-none py-5 px-6",
+        "sticky top-0 z-80 relative flex-none py-5 px-6",
         // Ensure content doesn't visually overlap the bar.
-        "bg-background",
+        "",
         "font-orchid-ui leading-6",
       ].join(" ")}
     >
-      <div className="flex items-center justify-between">
+      <ConversationPromptBackdrop edge="top" position="absolute" className="inset-x-0" height={160} />
+      <div className="relative z-20 flex items-center justify-between">
         {/* Brand */}
         <div className="flex flex-1 items-start">
           <Link href="/" className="block cursor-pointer text-orchid-ink">

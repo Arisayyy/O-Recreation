@@ -97,11 +97,13 @@ export function IssuePostMenu({
           <Menu.Popup className="group outline-none">
             <div className={menuPanelClassName()}>
               <div className="hide-scrollbar flex max-h-72 flex-col gap-0.5 overflow-auto select-none [--lh:1lh]">
-                <Menu.Item className="group/zhover outline-none" onClick={onDoneAction}>
-                  <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
-                    <MenuRow icon={<CheckCircleIcon className="size-4" />} label="Done" />
-                  </button>
-                </Menu.Item>
+                {onDoneAction ? (
+                  <Menu.Item className="group/zhover outline-none" onClick={onDoneAction}>
+                    <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
+                      <MenuRow icon={<CheckCircleIcon className="size-4" />} label="Done" />
+                    </button>
+                  </Menu.Item>
+                ) : null}
 
                 <Menu.Item className="group/zhover outline-none" onClick={onForwardAction}>
                   <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
@@ -109,13 +111,16 @@ export function IssuePostMenu({
                   </button>
                 </Menu.Item>
 
-                <Menu.Separator className="border-neutral border-t" />
-
-                <Menu.Item className="group/zhover outline-none" onClick={onDeleteAction}>
-                  <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
-                    <MenuRow icon={<TrashIcon className="size-4" />} label="Delete" />
-                  </button>
-                </Menu.Item>
+                {onDeleteAction ? (
+                  <>
+                    <Menu.Separator className="border-neutral border-t" />
+                    <Menu.Item className="group/zhover outline-none" onClick={onDeleteAction}>
+                      <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
+                        <MenuRow icon={<TrashIcon className="size-4" />} label="Remove" />
+                      </button>
+                    </Menu.Item>
+                  </>
+                ) : null}
               </div>
             </div>
           </Menu.Popup>

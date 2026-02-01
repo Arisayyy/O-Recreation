@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as githubIssueMessages from "../githubIssueMessages.js";
 import type * as githubIssues from "../githubIssues.js";
 import type * as githubIssuesNode from "../githubIssuesNode.js";
 import type * as http from "../http.js";
@@ -21,6 +22,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  githubIssueMessages: typeof githubIssueMessages;
   githubIssues: typeof githubIssues;
   githubIssuesNode: typeof githubIssuesNode;
   http: typeof http;

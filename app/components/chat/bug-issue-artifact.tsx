@@ -189,11 +189,11 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
 
   const bodyForSubmit = useMemo(() => {
     let out = stripSection(body.trim(), "Attachments");
+    out = stripSection(out, "Severity");
     out = appendSection(out, "Steps to reproduce", stepsToReproduce);
     out = appendSection(out, "Debug report", debugReport);
     out = appendSection(out, "Expected behavior", expectedBehavior);
     out = appendSection(out, "Actual behavior", actualBehavior);
-    out = appendSection(out, "Severity", severity);
     if (attachments.length > 0) {
       const lines = attachments.map((a) => {
         const isImage = (a.contentType ?? "").startsWith("image/");
@@ -208,7 +208,6 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
     body,
     debugReport,
     expectedBehavior,
-    severity,
     stepsToReproduce,
   ]);
 
@@ -832,6 +831,7 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
                           title: title.trim() || "Untitled bug",
                           body: bodyForSubmit,
                           status: "backlog",
+                          severity,
                           createdAt: now,
                           updatedAt: now,
                           createdBy: {

@@ -14,6 +14,21 @@ import {
 import { MenuDropdown, type MenuDropdownItem } from "@/app/components/menu-dropdown";
 import { IssueStatusIcon, formatIssueStatusLabel, type IssueStatusKey } from "@/app/components/icons/issue-status-icon";
 
+type SeverityKey = "low" | "medium" | "high" | "critical";
+
+function severityDotClass(severity: SeverityKey): string {
+  switch (severity) {
+    case "low":
+      return "bg-emerald-500";
+    case "medium":
+      return "bg-yellow-500";
+    case "high":
+      return "bg-orange-500";
+    case "critical":
+      return "bg-red-500";
+  }
+}
+
 export function IssueDetailHeader({
   title,
   closeHref = "/issues",
@@ -26,6 +41,7 @@ export function IssueDetailHeader({
   githubIssueUrl,
   githubSyncStatus,
   status,
+  severity,
   onStatusChangeAction,
 }: {
   title: string;
@@ -40,6 +56,7 @@ export function IssueDetailHeader({
   githubSyncStatus?: "pending" | "creating" | "synced" | "error" | null;
   githubSyncError?: string | null;
   status: IssueStatusKey;
+  severity?: SeverityKey | null;
   onStatusChangeAction: (next: IssueStatusKey) => void;
 }) {
   const STATUS_ITEMS: ReadonlyArray<MenuDropdownItem<IssueStatusKey>> = [
@@ -53,7 +70,18 @@ export function IssueDetailHeader({
   return (
     <AltNavbar
       closeHref={closeHref}
-      title={<p className="m-0 truncate">{title}</p>}
+      title={
+        <div className="m-0 flex min-w-0 items-center gap-2">
+          <p className="m-0 truncate">{title}</p>
+          {severity ? (
+            <span
+              className={["size-2 shrink-0 rounded-full", severityDotClass(severity)].join(" ")}
+              aria-label={`Severity: ${severity}`}
+              title={`Severity: ${severity}`}
+            />
+          ) : null}
+        </div>
+      }
       rightActions={
         <div className="flex gap-1">
           {githubIssueUrl ? (
@@ -158,6 +186,7 @@ export function IssueDetailHeader({
             icon={<ReplyIcon className="h-4 w-4" />}
             label="Reply"
             keycap="R"
+            data-issue-detail-reply-button="true"
             className="w-[94.7344px]"
             onClick={onReply}
           />

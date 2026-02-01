@@ -11,6 +11,13 @@ const IssueStatus = v.union(
   v.literal("canceled"),
 );
 
+const Severity = v.union(
+  v.literal("low"),
+  v.literal("medium"),
+  v.literal("high"),
+  v.literal("critical"),
+);
+
 const GithubSyncStatus = v.union(
   v.literal("pending"),
   v.literal("creating"),
@@ -19,12 +26,13 @@ const GithubSyncStatus = v.union(
 );
 
 export const issuesSchema = schema.define({
-  version: 2,
+  version: 3,
   shape: v.object({
     id: v.string(),
     title: v.string(),
     body: v.string(),
     status: IssueStatus,
+    severity: v.optional(Severity),
     createdAt: v.number(),
     updatedAt: v.number(),
     createdBy: v.object({
@@ -42,7 +50,7 @@ export const issuesSchema = schema.define({
 });
 
 export const issueMessagesSchema = schema.define({
-  version: 1,
+  version: 2,
   shape: v.object({
     id: v.string(),
     issueId: v.string(),
@@ -54,6 +62,13 @@ export const issueMessagesSchema = schema.define({
       color: v.string(),
       avatar: v.optional(v.string()),
     }),
+    githubCommentId: v.optional(v.number()),
+    githubCommentUrl: v.optional(v.string()),
+    githubSyncStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("creating"), v.literal("synced"), v.literal("error")),
+    ),
+    githubSyncError: v.optional(v.string()),
+    githubSyncedAt: v.optional(v.number()),
   }),
 });
 
@@ -64,6 +79,7 @@ export default defineSchema({
       title: v.string(),
       body: v.string(),
       status: IssueStatus,
+      severity: v.optional(Severity),
       createdAt: v.number(),
       updatedAt: v.number(),
       createdBy: v.object({
@@ -101,6 +117,13 @@ export default defineSchema({
         color: v.string(),
         avatar: v.optional(v.string()),
       }),
+      githubCommentId: v.optional(v.number()),
+      githubCommentUrl: v.optional(v.string()),
+      githubSyncStatus: v.optional(
+        v.union(v.literal("pending"), v.literal("creating"), v.literal("synced"), v.literal("error")),
+      ),
+      githubSyncError: v.optional(v.string()),
+      githubSyncedAt: v.optional(v.number()),
     },
     (t: TableDefinition) =>
       t

@@ -67,9 +67,13 @@ function FileIcon() {
 export function IssueThreadMessage({
   message,
   onReplyAction,
+  onDoneAction,
+  onDeleteAction,
 }: {
   message: IssueThreadMessageModel;
   onReplyAction?: () => void;
+  onDoneAction?: () => void;
+  onDeleteAction?: () => void;
 }) {
   const attachments = message.attachments ?? [];
   const attachmentCount = attachments.length;
@@ -163,15 +167,11 @@ export function IssueThreadMessage({
               <IssuePostMenu
                 align="end"
                 onOpenChangeAction={setIsPostMenuOpen}
-                onDoneAction={() => {
-                  // TODO: wire to real state / API.
-                }}
+                onDoneAction={onDoneAction}
                 onForwardAction={() => {
                   // TODO: wire to real state / API.
                 }}
-                onDeleteAction={() => {
-                  // TODO: wire to real state / API.
-                }}
+                onDeleteAction={onDeleteAction}
               />
             </div>
           </div>

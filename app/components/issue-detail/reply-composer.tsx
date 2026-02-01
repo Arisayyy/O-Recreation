@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import { useMutation } from "convex/react";
 import { PaperclipIcon } from "@/app/components/icons/paperclip-icon";
 import { TrashIcon } from "@/app/components/icons/trash-icon";
 import { Keycap } from "@/app/components/issue-detail/keycap";
@@ -13,6 +14,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import type { LexicalEditor, LexicalNode } from "lexical";
 import { MenuDropdown } from "@/app/components/menu-dropdown";
 import { AvatarMarble } from "@/app/components/avatar-marble";
+import { api } from "@/convex/_generated/api";
 import {
   $createParagraphNode,
   $getRoot,
@@ -880,6 +882,7 @@ export function IssueReplyComposer({
   replyTo?: { name: string; avatarId?: string } | null;
   onCloseAction?: () => void;
 }) {
+  const enqueueIssueMessageSync = useMutation(api.githubIssueMessages.enqueueIssueMessageSync);
   const [isEditorEmpty, setIsEditorEmpty] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -920,8 +923,9 @@ export function IssueReplyComposer({
     const author = getAnonymousIdentity();
 
     const messages = issueMessages.get();
+    const messageId = globalThis.crypto?.randomUUID?.() ?? `${now}`;
     messages.insert({
-      id: globalThis.crypto?.randomUUID?.() ?? `${now}`,
+      id: messageId,
       issueId,
       type: "reply",
       body,
@@ -931,6 +935,11 @@ export function IssueReplyComposer({
         color: author.color ?? "#6366f1",
       },
     });
+    try {
+      void enqueueIssueMessageSync({ issueMessageId: messageId });
+    } catch {
+      // Keep local-first UX; GitHub sync is best-effort.
+    }
 
     const issueCollection = issues.get();
     issueCollection.update(issueId, (draft: Issue) => {
@@ -944,7 +953,8 @@ export function IssueReplyComposer({
     });
     editor.focus();
     setIsEditorEmpty(true);
-  }, [isUploading, issueId]);
+    onCloseAction?.();
+  }, [enqueueIssueMessageSync, isUploading, issueId, onCloseAction]);
 
   const initialConfig = useMemo(
     () => ({

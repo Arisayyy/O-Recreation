@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
+import { useMutation } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { issueMessages as issueMessagesCollection } from "@/app/collections/issueMessages";
@@ -14,6 +15,7 @@ import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
 import { useIssueChat } from "@/app/components/issue-detail/issue-chat-context";
 import { getToolName, isToolUIPart } from "ai";
 import { useReplicateInitState } from "@/app/components/replicate-context";
+import { api } from "@/convex/_generated/api";
 
 // Space reserved for the fixed prompt at the bottom of the page.
 const BOTTOM_PADDING_PX = 164;
@@ -61,6 +63,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
 function IssueDetailClientReady({ issueId }: { issueId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const enqueueIssueStatusLabelSync = useMutation(api.githubIssues.enqueueIssueStatusLabelSync);
   const listMode = useMemo<"inbox" | "done" | "sent">(() => {
     const raw = searchParams?.get("list");
     if (raw === "done") return "done";
@@ -115,6 +118,13 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     () => (issueList ?? []).find((i) => i.id === issueId) ?? null,
     [issueList, issueId],
   );
+
+  const enqueueGithubStatusLabelSyncIfNeeded = useCallback(() => {
+    const hasGithub =
+      !!issue?.githubIssueUrl || typeof issue?.githubIssueNumber === "number" || !!issue?.githubSyncStatus;
+    if (!hasGithub) return;
+    void enqueueIssueStatusLabelSync({ issueId });
+  }, [enqueueIssueStatusLabelSync, issue, issueId]);
 
   const myIdentityName = useMemo(() => getAnonymousIdentity().name ?? "Anonymous", []);
 
@@ -196,6 +206,7 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     const nextId = idx >= 0 ? listIssueIds[idx + 1] ?? null : null;
 
     updateIssueStatus("done" as any);
+    enqueueGithubStatusLabelSyncIfNeeded();
     issueChat.flashPromptStatus({ kind: "issue_marked_done", message: "Marked as done" }, 3000);
 
     if (nextId) {
@@ -203,7 +214,16 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     } else {
       router.push("/issues");
     }
-  }, [issue, issueChat, issueId, listIssueIds, listMode, router, updateIssueStatus]);
+  }, [
+    enqueueGithubStatusLabelSyncIfNeeded,
+    issue,
+    issueChat,
+    issueId,
+    listIssueIds,
+    listMode,
+    router,
+    updateIssueStatus,
+  ]);
 
   const onStatusChange = useCallback(
     (next: import("@/app/components/icons/issue-status-icon").IssueStatusKey) => {
@@ -218,12 +238,14 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
         const idx = listIssueIds.indexOf(issueId);
         setDoneAnchorIndex(idx >= 0 ? idx : null);
         updateIssueStatus(next as any);
+        enqueueGithubStatusLabelSyncIfNeeded();
         return;
       }
 
       updateIssueStatus(next as any);
+      enqueueGithubStatusLabelSyncIfNeeded();
     },
-    [issue, issueId, listIssueIds, listMode, updateIssueStatus],
+    [enqueueGithubStatusLabelSyncIfNeeded, issue, issueId, listIssueIds, listMode, updateIssueStatus],
   );
 
   const openReply = useCallback(() => {
@@ -291,6 +313,9 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
       }
       if (action === "issue_detail_mark_done") {
         markDoneAndGoNext();
+      }
+      if (action === "issue_detail_reply") {
+        clickHotkeyTarget('[data-issue-detail-reply-button="true"]');
       }
       if (action === "issue_detail_status_menu") {
         clickHotkeyTarget('[data-issue-detail-status-trigger="true"]');
@@ -691,6 +716,7 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
         githubSyncStatus={(issue as any).githubSyncStatus}
         githubSyncError={(issue as any).githubSyncError}
         status={issue.status as any}
+        severity={issue.severity as any}
         onStatusChangeAction={onStatusChange}
       />
 
@@ -797,6 +823,9 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
                   </div>,
                 );
               } else {
+                const isMainIssuePost = item.kind === "reply" && item.id.startsWith("issue:");
+                const canRemovePost =
+                  item.kind === "reply" && !item.id.startsWith("issue:") && "fromName" in item && item.fromName === myName;
                 nodes.push(
                   <div
                     key={item.id}
@@ -814,6 +843,19 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
                         attachments: [],
                       }}
                       onReplyAction={() => openReplyTo({ name: item.fromName, avatarId: item.fromAvatarId })}
+                      onDoneAction={isMainIssuePost ? markDoneAndGoNext : undefined}
+                      onDeleteAction={
+                        canRemovePost
+                          ? () => {
+                              const now = Date.now();
+                              messages.delete(item.id);
+                              issues.update(issueId, (draft: any) => {
+                                draft.updatedAt = now;
+                              });
+                              issueChat.flashPromptStatus({ kind: "reply_removed", message: "Reply removed" }, 3000);
+                            }
+                          : undefined
+                      }
                     />
                   </div>,
                 );

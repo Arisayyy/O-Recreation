@@ -10,6 +10,14 @@ export type PromptStatus =
       kind: "issue_marked_done";
       message: string;
     }
+  | {
+      kind: "reply_removed";
+      message: string;
+    }
+  | {
+      kind: "issue_removed";
+      message: string;
+    }
   | null;
 
 type IssueChatContextValue = Pick<
