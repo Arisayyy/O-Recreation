@@ -12,6 +12,8 @@ import { streamdownComponents, streamdownRehypePlugins } from "@/app/components/
 import { useChat } from "./chat-context";
 import { useOptimizedScroll } from "@/app/hooks/use-optimized-scroll";
 import { useFirstMessageSendAnimation } from "@/app/components/chat/first-message-send-animation";
+import { getToolName, isToolUIPart } from "ai";
+import { BugIssueArtifact, type BugIssueArtifactDraft } from "./bug-issue-artifact";
 
 // Space reserved for the fixed prompt at the bottom of the page.
 const BOTTOM_PADDING_PX = 164;
@@ -263,6 +265,7 @@ export function ChatThread() {
             isUser && userMessageCount === 1 && firstMessageAnim.phase !== "idle";
           const textParts = m.parts.filter((p) => p.type === "text");
           const fileParts = m.parts.filter((p) => p.type === "file");
+          const toolParts = m.parts.filter((p) => isToolUIPart(p));
           const markdown = textParts
             .map((p) => p.text)
             .join("\n\n")
@@ -271,7 +274,15 @@ export function ChatThread() {
             m.role === "assistant" &&
             (status === "submitted" || status === "streaming") &&
             markdown.length === 0 &&
-            fileParts.length === 0;
+            fileParts.length === 0 &&
+            toolParts.length === 0;
+          const isCreatingBugIssueArtifactPlaceholder =
+            m.role === "assistant" &&
+            (status === "submitted" || status === "streaming") &&
+            toolParts.some((p) => {
+              const toolName = getToolName(p as any);
+              return toolName === "createBugIssueArtifact" && p.state !== "output-available";
+            });
 
           // Fade the first assistant message in after the first user message animation completes.
           const shouldGateFirstAssistantFade =
@@ -317,7 +328,7 @@ export function ChatThread() {
                             aria-hidden="true"
                           />
                           <span className="text-copy text-orchid-muted text-sm leading-[21px]">
-                            Thinking...
+                            Cerebrating...
                           </span>
                         </div>
                       </div>
@@ -333,6 +344,38 @@ export function ChatThread() {
                       {markdown}
                     </Streamdown>
                   ) : null}
+
+                  {isCreatingBugIssueArtifactPlaceholder ? (
+                    <div className="not-prose text-copy w-full">
+                      <div className="py-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="bg-ai animate-pulse-size size-2 rounded-full"
+                            aria-hidden="true"
+                          />
+                          <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                            Transmuting...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {toolParts.map((part, idx) => {
+                    const toolName = getToolName(part as any);
+                    if (toolName === "createBugIssueArtifact") {
+                      if (part.state !== "output-available") return null;
+                      const draft = part.output as BugIssueArtifactDraft;
+                      return (
+                        <BugIssueArtifact
+                          key={`${m.id}-tool-${toolName}-${idx}`}
+                          initialDraft={draft}
+                        />
+                      );
+                    }
+
+                    return null;
+                  })}
 
                   {fileParts.map((part, idx) => {
                     const isImage = part.mediaType.startsWith("image/");

@@ -29,7 +29,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
     setIsReplyOpen(true);
     // Scroll the composer into view (focus happens inside the composer).
     window.setTimeout(() => {
-      replyWrapperRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      replyWrapperRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
     }, 0);
   }, []);
 
@@ -341,7 +341,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
         </div>
 
         {/* Reply composer */}
-        <div ref={replyWrapperRef} className="mt-4">
+        <div ref={replyWrapperRef} className="mt-4 scroll-mt-24">
           <IssueReplyComposer
             open={isReplyOpen}
             issueId={issueId}
