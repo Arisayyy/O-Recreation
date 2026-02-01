@@ -886,10 +886,7 @@ export function Prompt({
                 <div className="relative z-10 inline-flex items-center gap-1 text-sm leading-[21px] text-orchid-ink">
                   <span className="px-[2px]">
                     {isUploadingFiles
-                      ? "Uploading…"
-                      : canSendIssueChat
-                        ? "Comment"
-                        : "Go"}
+                      ? "Uploading…"                      : "Send"}
                   </span>
                   <span className="hidden h-4 items-center rounded border border-neutral bg-surface-weak px-1 text-[12px] leading-[17.6px] text-orchid-placeholder shadow-xs md:inline-flex">
                     ↵

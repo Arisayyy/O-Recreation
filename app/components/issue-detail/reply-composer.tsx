@@ -12,6 +12,7 @@ import { $createMediaNode, MEDIA_MARKDOWN_TRANSFORMER, MediaNode } from "./lexic
 import { Dialog } from "@base-ui/react/dialog";
 import type { LexicalEditor, LexicalNode } from "lexical";
 import { MenuDropdown } from "@/app/components/menu-dropdown";
+import { AvatarMarble } from "@/app/components/avatar-marble";
 import {
   $createParagraphNode,
   $getRoot,
@@ -871,10 +872,12 @@ function ComposerToolbar({
 export function IssueReplyComposer({
   open,
   issueId,
+  replyTo,
   onCloseAction,
 }: {
   open: boolean;
   issueId: string;
+  replyTo?: { name: string; avatarId?: string } | null;
   onCloseAction?: () => void;
 }) {
   const [isEditorEmpty, setIsEditorEmpty] = useState(true);
@@ -973,6 +976,11 @@ export function IssueReplyComposer({
     [issueId],
   );
 
+  const replyToInitial = useMemo(() => {
+    const name = replyTo?.name ?? "";
+    return (name.trim()?.[0] ?? "A").toUpperCase();
+  }, [replyTo?.name]);
+
   if (!open) return null;
 
   return (
@@ -1033,14 +1041,26 @@ export function IssueReplyComposer({
           <div className="flex min-w-0 flex-1 items-center gap-2 cursor-pointer pointer-events-auto">
             <div className="flex min-w-0 items-center space-x-1">
               <div className="bg-surface-strong hover:bg-surface flex items-center rounded-full p-1 whitespace-nowrap transition-[translate,opacity,background] translate-y-0 opacity-100">
-                <div className="bg-surface border-neutral text-orchid-ink flex items-center justify-center overflow-hidden border font-semibold rounded-full size-4 min-w-4 min-h-4 text-[10px] leading-[15px] w-5">
-                  <span className="text-orchid-ink grid place-items-center size-4 min-w-4 min-h-4 text-[10px] leading-[15px] w-5">
-                    [
-                  </span>
-                </div>
                 <div>
                   <p className="px-1 text-sm leading-[21px] text-orchid-ink">
-                    [SANDBOX] Polar
+                    <span className="inline-flex items-center gap-2">
+                      <span className="bg-surface border-neutral text-orchid-ink flex items-center justify-center overflow-hidden border font-semibold rounded-full size-4 min-w-4 min-h-4 text-[10px] leading-[15px]">
+                        {replyTo?.avatarId ? (
+                          <AvatarMarble
+                            size={16}
+                            id={replyTo.avatarId}
+                            name={replyTo.name}
+                            showInitials={false}
+                            className="block size-4"
+                          />
+                        ) : (
+                          <span className="grid place-items-center size-4 min-w-4 min-h-4 text-[10px] leading-[15px]">
+                            {replyToInitial}
+                          </span>
+                        )}
+                      </span>
+                      <span className="min-w-0 truncate">{replyTo?.name ?? "Anonymous"}</span>
+                    </span>
                   </p>
                 </div>
               </div>

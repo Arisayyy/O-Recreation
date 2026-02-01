@@ -144,16 +144,20 @@ function variantFromPathname(pathname: string): PromptVariant {
   return "home";
 }
 
+function isIssueDetailPath(pathname: string): boolean {
+  if (!pathname.startsWith("/issues/")) return false;
+  const parts = pathname.split("/");
+  if (parts.length !== 3) return false;
+  const idOrRoute = parts[2];
+  if (!idOrRoute) return false;
+  return idOrRoute !== "sent" && idOrRoute !== "completed";
+}
+
 export function PromptShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const variant = useMemo(() => variantFromPathname(pathname), [pathname]);
   const isIssueDetailRoute = useMemo(() => {
-    if (!pathname.startsWith("/issues/")) return false;
-    const parts = pathname.split("/");
-    if (parts.length !== 3) return false;
-    const idOrRoute = parts[2];
-    if (!idOrRoute) return false;
-    return idOrRoute !== "sent" && idOrRoute !== "completed";
+    return isIssueDetailPath(pathname);
   }, [pathname]);
   const issueIdForComment = useMemo(() => {
     if (!isIssueDetailRoute) return null;
@@ -201,19 +205,21 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
     const prevPath = lastPathRef.current;
 
     if (prevRect && prevPath && prevPath !== pathname) {
+      if (prevPath.startsWith("/issues") && pathname.startsWith("/issues")) {
+        lastRectRef.current = nextRect;
+        lastPathRef.current = pathname;
+        return;
+      }
+
       const dx = prevRect.left - nextRect.left;
       const dy = prevRect.top - nextRect.top;
-      const sx =
-        nextRect.width > 0 ? Math.max(0.0001, prevRect.width / nextRect.width) : 1;
-      const sy =
-        nextRect.height > 0 ? Math.max(0.0001, prevRect.height / nextRect.height) : 1;
 
       animationRef.current?.cancel();
 
       el.style.transformOrigin = "top left";
       el.style.willChange = "transform";
 
-      const invert = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+      const invert = `translate(${dx}px, ${dy}px)`;
       el.style.transform = invert;
       el.getBoundingClientRect();
 

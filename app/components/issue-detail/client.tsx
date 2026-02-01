@@ -22,13 +22,15 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
   const issueChat = useIssueChat();
 
   const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ name: string; avatarId?: string } | null>(null);
   const replyWrapperRef = useRef<HTMLDivElement | null>(null);
   const lastUserMessageRef = useRef<HTMLDivElement | null>(null);
   const contentEndRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
   const lastSpacerHeightRef = useRef<number>(0);
 
-  const openReply = useCallback(() => {
+  const openReplyTo = useCallback((target: { name: string; avatarId?: string } | null) => {
+    setReplyTo(target);
     setIsReplyOpen(true);
     // Scroll the composer into view (focus happens inside the composer).
     window.setTimeout(() => {
@@ -38,6 +40,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
 
   const closeReply = useCallback(() => {
     setIsReplyOpen(false);
+    setReplyTo(null);
   }, []);
 
   const { data: issueList, isLoading: issuesLoading, isError: issuesError } =
@@ -52,6 +55,12 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
     () => (issueList ?? []).find((i) => i.id === issueId) ?? null,
     [issueList, issueId],
   );
+
+  const openReply = useCallback(() => {
+    const name = issue?.createdBy?.name ?? "Anonymous";
+    const avatarId = issue?.createdBy?.avatar ?? name;
+    openReplyTo({ name, avatarId });
+  }, [issue?.createdBy?.avatar, issue?.createdBy?.name, openReplyTo]);
 
   const issueContextText = useMemo(() => {
     if (!issue) return "";
@@ -273,6 +282,16 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
     }
     return null;
   }, []);
+
+  useLayoutEffect(() => {
+    const endEl = contentEndRef.current;
+    const scrollParent = getScrollParent(endEl);
+    if (scrollParent) {
+      scrollParent.scrollTop = 0;
+    } else {
+      window.scrollTo({ top: 0, left: 0 });
+    }
+  }, [getScrollParent, issueId]);
 
   const offsetTopWithin = useCallback((el: HTMLElement, ancestor: HTMLElement) => {
     let top = 0;
@@ -536,7 +555,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
                         body: item.body,
                         attachments: [],
                       }}
-                      onReplyAction={openReply}
+                      onReplyAction={() => openReplyTo({ name: item.fromName, avatarId: item.fromAvatarId })}
                     />
                   </div>,
                 );
@@ -554,6 +573,7 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
           <IssueReplyComposer
             open={isReplyOpen}
             issueId={issueId}
+            replyTo={replyTo}
             onCloseAction={closeReply}
           />
         </div>
