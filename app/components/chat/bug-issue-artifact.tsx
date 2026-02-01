@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
 import { uploadToUploadsRoute } from "@/app/lib/uploads";
+import { issues as issuesCollection } from "@/app/collections/issues";
 import { TrashIcon } from "@/app/components/icons/trash-icon";
 import { PaperclipIcon } from "@/app/components/icons/paperclip-icon";
 import { MenuDropdown, type MenuDropdownItem } from "@/app/components/menu-dropdown";
@@ -90,6 +89,15 @@ function formatBytes(bytes: number) {
   return `${value.toFixed(digits)} ${units[i]}`;
 }
 
+function stripSection(markdown: string, heading: string) {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(
+    String.raw`(^|\n)## ${escaped}\n[\s\S]*?(?=\n## |\n?$)`,
+    "g",
+  );
+  return markdown.replace(re, "\n").trim();
+}
+
 function appendSection(out: string, heading: string, content: string) {
   const c = content.trim();
   if (!c) return out.trim();
@@ -99,7 +107,7 @@ function appendSection(out: string, heading: string, content: string) {
 
 export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtifactDraft }) {
   const router = useRouter();
-  const createIssue = useMutation(api.issues.create);
+  const issues = issuesCollection.get();
 
   const initialTitle = initialDraft.title ?? "";
   const initialBody = initialDraft.body?.trim() ?? "";
@@ -126,11 +134,17 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
   const [error, setError] = useState<string | null>(null);
   const [createdIssueId, setCreatedIssueId] = useState<string | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setIsVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const [fileInputEl, setFileInputEl] = useState<HTMLInputElement | null>(null);
 
   const bodyForSubmit = useMemo(() => {
-    let out = body.trim();
+    let out = stripSection(body.trim(), "Attachments");
     out = appendSection(out, "Steps to reproduce", stepsToReproduce);
     out = appendSection(out, "Debug report", debugReport);
     out = appendSection(out, "Expected behavior", expectedBehavior);
@@ -160,41 +174,42 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
     return title.trim().length > 0 && bodyForSubmit.trim().length > 0;
   }, [bodyForSubmit, createdIssueId, isSaving, title]);
 
-  const discardChanges = useCallback(() => {
-    if (isSaving) return;
-    setError(null);
-    setTitle(initialTitle);
-    setBody(initialBody);
-    setStepsToReproduce(initialStepsToReproduce);
-    setDebugReport(initialDebugReport);
-    setExpectedBehavior(initialExpectedBehavior);
-    setActualBehavior(initialActualBehavior);
-    setSeverity(initialSeverity);
-    setAttachments([]);
-    setUploadError(null);
-    setAreAttachmentsExpanded(false);
-  }, [
-    initialActualBehavior,
-    initialBody,
-    initialDebugReport,
-    initialExpectedBehavior,
-    initialSeverity,
-    initialStepsToReproduce,
-    initialTitle,
-    isSaving,
-  ]);
-
   const removeAttachment = useCallback((url: string) => {
     setAttachments((prev) => prev.filter((a) => a.url !== url));
   }, []);
 
-  if (isDismissed) return null;
+  if (isDismissed) {
+    return (
+      <div className="not-prose text-copy w-full">
+        <div className="py-1">
+          <div className="flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+              className="size-3 text-orchid-muted"
+            >
+              <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+            </svg>
+            <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+              Issue draft discarded.
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className={[
         "bg-surface-subtle flex w-full flex-col overflow-hidden rounded-xl p-0.5",
         "ease-out-expo outline-none transition-none",
+        "transform-gpu will-change-transform",
+        "motion-reduce:transform-none motion-reduce:transition-none",
+        "transition-[opacity,transform] duration-300 ease-out",
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1",
       ].join(" ")}
     >
       {/* Header fields (To / Subject) — match reference DOM closely (no Cc/Bcc). */}
@@ -307,6 +322,7 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
                         autoCapitalize="none"
                         role="combobox"
                         aria-expanded="false"
+                        aria-controls="bug-issue-artifact-to-listbox"
                         aria-haspopup="listbox"
                         aria-autocomplete="list"
                       />
@@ -756,18 +772,22 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
                       setError(null);
                       setIsSaving(true);
                       try {
+                        const now = Date.now();
                         const createdBy = getAnonymousIdentity();
-                        const res = await createIssue({
+                        const id = globalThis.crypto?.randomUUID?.() ?? `${now}`;
+                        issues.insert({
+                          id,
                           title: title.trim() || "Untitled bug",
                           body: bodyForSubmit,
                           status: "backlog",
+                          createdAt: now,
+                          updatedAt: now,
                           createdBy: {
                             name: createdBy.name ?? "Anonymous",
                             color: createdBy.color ?? "#999999",
-                            avatar: (createdBy as any).avatar,
                           },
                         });
-                        setCreatedIssueId(res.id);
+                        setCreatedIssueId(id);
                       } catch (e) {
                         setError(e instanceof Error ? e.message : "Failed to create issue.");
                       } finally {

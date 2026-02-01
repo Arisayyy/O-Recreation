@@ -192,18 +192,22 @@ export function IssueThreadMessage({
             <div
               role="presentation"
               className="size-full hide-scrollbar"
-              style={{ overflow: "auto" }}
+              style={{ overflowY: "auto", overflowX: "hidden" }}
             >
-              <div role="presentation" style={{ minWidth: "fit-content" }}>
-                <div className="prose w-full max-w-none rounded-md m-0 p-0 text-orchid-ink">
-                  <Streamdown
-                    mode="static"
-                    rehypePlugins={streamdownRehypePlugins}
-                    components={streamdownComponents}
-                  >
-                    {message.body}
-                  </Streamdown>
-                </div>
+              <div
+                className={[
+                  "prose w-full max-w-none rounded-md m-0 p-0 text-orchid-ink",
+                  // Prevent long unbroken strings (e.g. URLs) from forcing horizontal scroll.
+                  "break-words [overflow-wrap:anywhere]",
+                ].join(" ")}
+              >
+                <Streamdown
+                  mode="static"
+                  rehypePlugins={streamdownRehypePlugins}
+                  components={streamdownComponents}
+                >
+                  {message.body}
+                </Streamdown>
               </div>
             </div>
           </div>

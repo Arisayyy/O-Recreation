@@ -265,7 +265,7 @@ export function ChatThread() {
             isUser && userMessageCount === 1 && firstMessageAnim.phase !== "idle";
           const textParts = m.parts.filter((p) => p.type === "text");
           const fileParts = m.parts.filter((p) => p.type === "file");
-          const toolParts = m.parts.filter((p) => isToolUIPart(p));
+          const toolParts = m.parts.filter(isToolUIPart);
           const markdown = textParts
             .map((p) => p.text)
             .join("\n\n")
@@ -280,7 +280,7 @@ export function ChatThread() {
             m.role === "assistant" &&
             (status === "submitted" || status === "streaming") &&
             toolParts.some((p) => {
-              const toolName = getToolName(p as any);
+              const toolName = getToolName(p);
               return toolName === "createBugIssueArtifact" && p.state !== "output-available";
             });
 
@@ -305,7 +305,8 @@ export function ChatThread() {
                     : undefined
               }
               className={[
-                "group flex w-full items-end gap-2 py-4",
+                "group flex w-full items-end gap-2",
+                isUser ? "pt-8 pb-4" : "py-4",
                 isUser ? "is-user" : "is-assistant",
               ].join(" ")}
               style={
@@ -362,7 +363,7 @@ export function ChatThread() {
                   ) : null}
 
                   {toolParts.map((part, idx) => {
-                    const toolName = getToolName(part as any);
+                    const toolName = getToolName(part);
                     if (toolName === "createBugIssueArtifact") {
                       if (part.state !== "output-available") return null;
                       const draft = part.output as BugIssueArtifactDraft;

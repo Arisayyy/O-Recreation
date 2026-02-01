@@ -6,9 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { Autocomplete } from "@base-ui/react/autocomplete";
-import { issueMessages } from "@/app/collections/issueMessages";
-import { issues, type Issue } from "@/app/collections/issues";
-import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
 import { StripeIcon } from "@/app/components/icons/stripe-icon";
 import { GitHubIcon } from "@/app/components/icons/github-icon";
 import { LinearIcon } from "@/app/components/icons/linear-icon";
@@ -17,6 +14,7 @@ import { useChat } from "@/app/components/chat/chat-context";
 import { useFirstMessageSendAnimation } from "@/app/components/chat/first-message-send-animation";
 import { uploadToUploadsRoute } from "@/app/lib/uploads";
 import type { FileUIPart } from "ai";
+import { useIssueChat } from "@/app/components/issue-detail/issue-chat-context";
 
 const playfairDisplay = Playfair_Display({
   weight: ["500"],
@@ -295,6 +293,7 @@ export function Prompt({
 }) {
   const router = useRouter();
   const chat = useChat();
+  const issueChat = useIssueChat();
   const chatStatus = chat.status;
   const stopChat = chat.stop;
   const firstMessageAnim = useFirstMessageSendAnimation();
@@ -318,11 +317,12 @@ export function Prompt({
   const collapseNearBottomDelay =
     isNavigating && navDirection === "toIssues" ? "delay-[420ms]" : "delay-0";
 
-  const canSendComment = variant === "issues" && !!issueIdForComment;
+  const canSendIssueChat = variant === "issues" && !!issueIdForComment;
   const canSendChatMessage =
     variant === "home" || variant === "chat" || (variant === "issues" && !issueIdForComment);
   const isThinking =
-    canSendChatMessage && (chatStatus === "submitted" || chatStatus === "streaming");
+    (canSendChatMessage && (chatStatus === "submitted" || chatStatus === "streaming")) ||
+    (canSendIssueChat && (issueChat.status === "submitted" || issueChat.status === "streaming"));
 
   // If we leave `/chat` while the assistant is still streaming, stop the in-flight request.
   // This avoids leaking the "Thinking..." prompt UI onto unrelated routes after exiting chat.
@@ -381,34 +381,23 @@ export function Prompt({
     composerRef.current?.focus();
   };
 
-  const sendComment = () => {
-    if (!canSendComment) return;
-    if (isEmpty) return;
+  const sendIssueMessage = () => {
+    if (!canSendIssueChat) return;
+    // Same as /chat: don't allow sending while the assistant is generating a response.
+    if (issueChat.status !== "ready") return;
+    if (isEmpty && pendingFiles.length === 0) return;
+    if (isUploadingFiles) return;
 
-    const now = Date.now();
-    const author = getAnonymousIdentity();
     const msg = serializedValue.trim();
+    const parts = [
+      ...(msg.length ? [{ type: "text" as const, text: msg }] : []),
+      ...pendingFiles,
+    ];
 
-    const messages = issueMessages.get();
-    messages.insert({
-      id: globalThis.crypto?.randomUUID?.() ?? `${now}`,
-      issueId: issueIdForComment!,
-      type: "comment",
-      body: msg,
-      createdAt: now,
-      author: {
-        name: author.name ?? "Anonymous",
-        color: author.color ?? "#6366f1",
-      },
-    });
-
-    // Bump issue updatedAt so it floats in the inbox.
-    const issueCollection = issues.get();
-    issueCollection.update(issueIdForComment!, (draft: Issue) => {
-      draft.updatedAt = now;
-    });
+    void issueChat.sendMessage({ role: "user", parts });
 
     resetComposer();
+    setPendingFiles([]);
   };
 
   const sendChatMessage = () => {
@@ -692,9 +681,9 @@ export function Prompt({
                             requestAnimationFrame(() => syncFromComposer());
                             return;
                           }
-                          if (canSendComment && !e.shiftKey) {
+                          if (canSendIssueChat && !e.shiftKey) {
                             e.preventDefault();
-                            sendComment();
+                            sendIssueMessage();
                             return;
                           }
 
@@ -793,7 +782,7 @@ export function Prompt({
                         !isEmpty ? "opacity-0" : "opacity-100",
                       ].join(" ")}
                     >
-                      {canSendComment ? "Add a comment…" : "Ask anything..."}
+                      {canSendIssueChat ? "Ask anything..." : "Ask anything..."}
                     </div>
                   </div>
                 </div>
@@ -868,20 +857,22 @@ export function Prompt({
               <button
                 type="button"
                 disabled={
-                  (!canSendComment && !canSendChatMessage) ||
-                  ((isEmpty && pendingFiles.length === 0) || isUploadingFiles || chat.status !== "ready")
-                }
-                className={[
-                  (!canSendComment && !canSendChatMessage) ||
+                  (!canSendIssueChat && !canSendChatMessage) ||
                   (isEmpty && pendingFiles.length === 0) ||
                   isUploadingFiles ||
-                  chat.status !== "ready"
+                  (canSendChatMessage ? chat.status !== "ready" : issueChat.status !== "ready")
+                }
+                className={[
+                  (!canSendIssueChat && !canSendChatMessage) ||
+                  (isEmpty && pendingFiles.length === 0) ||
+                  isUploadingFiles ||
+                  (canSendChatMessage ? chat.status !== "ready" : issueChat.status !== "ready")
                     ? "relative inline-flex h-7 flex-none cursor-not-allowed items-center rounded-orchid-pill px-1.5 py-0 opacity-50"
                     : "group/button focus-visible:ring-neutral-strong relative inline-flex h-7 flex-none cursor-pointer items-center rounded-orchid-pill px-1.5 py-0 whitespace-nowrap outline-none transition-transform select-none focus-visible:ring-2",
                 ].join(" ")}
                 onClick={() => {
-                  if (canSendComment) {
-                    sendComment();
+                  if (canSendIssueChat) {
+                    sendIssueMessage();
                     return;
                   }
                   if (canSendChatMessage) {
@@ -896,7 +887,7 @@ export function Prompt({
                   <span className="px-[2px]">
                     {isUploadingFiles
                       ? "Uploading…"
-                      : canSendComment
+                      : canSendIssueChat
                         ? "Comment"
                         : "Go"}
                   </span>
