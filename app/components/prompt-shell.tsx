@@ -7,6 +7,7 @@ import { ChatProvider } from "@/app/components/chat/chat-context";
 import { FirstMessageSendAnimationProvider } from "@/app/components/chat/first-message-send-animation";
 import { IssueChatProvider } from "@/app/components/issue-detail/issue-chat-context";
 import { ConversationPromptBackdrop } from "@/app/components/conversation-prompt-backdrop";
+import { IssuesPrefetch } from "@/app/components/issues-inbox/issues-prefetch";
 
 type PromptVariant = "home" | "issues" | "chat";
 type NavDirection = "toIssues" | "toHome";
@@ -182,6 +183,7 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
               </div>
             ) : (
               <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-6">
+                <IssuesPrefetch />
                 {/* Content */}
                 {children}
               </div>

@@ -95,7 +95,7 @@ export function IssuePostMenu({
       </Menu.Trigger>
 
       <Menu.Portal>
-        <Menu.Positioner side="bottom" align={align} className="z-80">
+        <Menu.Positioner side="bottom" align={align} className="z-[9999]">
           <Menu.Popup className="group outline-none">
             <div className={menuPanelClassName()}>
               <div className="hide-scrollbar flex max-h-72 flex-col gap-0.5 overflow-auto select-none [--lh:1lh]">

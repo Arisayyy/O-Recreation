@@ -42,7 +42,7 @@ export function MenuDropdown<TValue extends string>({
       <Menu.Trigger className={triggerClassName}>{trigger}</Menu.Trigger>
 
       <Menu.Portal>
-        <Menu.Positioner side="bottom" align={align} className="z-80">
+        <Menu.Positioner side="bottom" align={align} className="z-[9999]">
           <Menu.Popup
             className="group outline-none"
             onKeyDown={(e) => {
