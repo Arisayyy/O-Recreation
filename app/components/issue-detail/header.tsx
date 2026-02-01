@@ -32,6 +32,7 @@ function severityDotClass(severity: SeverityKey): string {
 export function IssueDetailHeader({
   title,
   closeHref = "/issues",
+  onCloseAction,
   onReply,
   onPrevIssue,
   onNextIssue,
@@ -46,6 +47,7 @@ export function IssueDetailHeader({
 }: {
   title: string;
   closeHref?: string;
+  onCloseAction?: () => void;
   onReply?: () => void;
   onPrevIssue?: () => void;
   onNextIssue?: () => void;
@@ -70,6 +72,7 @@ export function IssueDetailHeader({
   return (
     <AltNavbar
       closeHref={closeHref}
+      onCloseAction={onCloseAction}
       title={
         <div className="m-0 flex min-w-0 items-center gap-2">
           <p className="m-0 truncate">{title}</p>

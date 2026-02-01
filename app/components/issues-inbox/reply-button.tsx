@@ -1,4 +1,4 @@
-export function ReplyButton({ label }: { label: string }) {
+export function ReplyButton({ label, onClick }: { label: string; onClick?: () => void }) {
   // Visual-only for now (no interaction hooks).
   return (
     <button
@@ -8,6 +8,7 @@ export function ReplyButton({ label }: { label: string }) {
         "rounded-orchid-pill px-2 whitespace-nowrap outline-none transition-transform select-none",
         "focus-visible:ring-2 focus-visible:ring-orchid-ink",
       ].join(" ")}
+      onClick={onClick}
     >
       <span
         aria-hidden="true"

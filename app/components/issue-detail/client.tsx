@@ -20,7 +20,22 @@ import { api } from "@/convex/_generated/api";
 // Space reserved for the fixed prompt at the bottom of the page.
 const BOTTOM_PADDING_PX = 164;
 
-export function IssueDetailClient({ issueId }: { issueId: string }) {
+export function IssueDetailClient({
+  issueId,
+  listMode: listModeOverride,
+  onNavigateIssueIdAction,
+  onNavigateToListAction,
+  onCloseAction,
+}: {
+  issueId: string;
+  listMode?: "inbox" | "done" | "sent";
+  onNavigateIssueIdAction?: (
+    issueId: string,
+    opts: { listMode: "inbox" | "done" | "sent" },
+  ) => void;
+  onNavigateToListAction?: (opts: { listMode: "inbox" | "done" | "sent" }) => void;
+  onCloseAction?: () => void;
+}) {
   const { ready, error, retry } = useReplicateInitState();
 
   // Don't call hooks that require the collections until Replicate is initialized.
@@ -57,22 +72,67 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
     );
   }
 
-  return <IssueDetailClientReady issueId={issueId} />;
+  return (
+    <IssueDetailClientReady
+      issueId={issueId}
+      listModeOverride={listModeOverride}
+      onNavigateIssueIdAction={onNavigateIssueIdAction}
+      onNavigateToListAction={onNavigateToListAction}
+      onCloseAction={onCloseAction}
+    />
+  );
 }
 
-function IssueDetailClientReady({ issueId }: { issueId: string }) {
+function IssueDetailClientReady({
+  issueId,
+  listModeOverride,
+  onNavigateIssueIdAction,
+  onNavigateToListAction,
+  onCloseAction,
+}: {
+  issueId: string;
+  listModeOverride?: "inbox" | "done" | "sent";
+  onNavigateIssueIdAction?: (
+    issueId: string,
+    opts: { listMode: "inbox" | "done" | "sent" },
+  ) => void;
+  onNavigateToListAction?: (opts: { listMode: "inbox" | "done" | "sent" }) => void;
+  onCloseAction?: () => void;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const enqueueIssueStatusLabelSync = useMutation(api.githubIssues.enqueueIssueStatusLabelSync);
   const listMode = useMemo<"inbox" | "done" | "sent">(() => {
+    if (listModeOverride) return listModeOverride;
     const raw = searchParams?.get("list");
     if (raw === "done") return "done";
     if (raw === "sent") return "sent";
     return "inbox";
-  }, [searchParams]);
+  }, [listModeOverride, searchParams]);
   const issues = issuesCollection.get();
   const messages = issueMessagesCollection.get();
   const issueChat = useIssueChat();
+  const navigateToIssue = useCallback(
+    (nextId: string) => {
+      if (onNavigateIssueIdAction) {
+        onNavigateIssueIdAction(nextId, { listMode });
+        return;
+      }
+      router.push(`/issues/${encodeURIComponent(nextId)}?list=${encodeURIComponent(listMode)}`);
+    },
+    [listMode, onNavigateIssueIdAction, router],
+  );
+  const navigateToList = useCallback(() => {
+    if (onNavigateToListAction) {
+      onNavigateToListAction({ listMode });
+      return;
+    }
+    if (onCloseAction) {
+      onCloseAction();
+      return;
+    }
+    router.push(listMode === "done" ? "/issues/completed" : listMode === "sent" ? "/issues/sent" : "/issues");
+  }, [listMode, onCloseAction, onNavigateToListAction, router]);
   const updateIssueStatus = useCallback(
     (next: import("@/app/components/icons/issue-status-icon").IssueStatusKey) => {
       const now = Date.now();
@@ -177,9 +237,9 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
       }
 
       if (!nextId || nextId === issueId) return;
-      router.push(`/issues/${encodeURIComponent(nextId)}?list=${encodeURIComponent(listMode)}`);
+      navigateToIssue(nextId);
     },
-    [doneAnchorIndex, issue, issueId, listIssueIds, listMode, router],
+    [doneAnchorIndex, issue, issueId, listIssueIds, listMode, navigateToIssue],
   );
 
   const { canPrevIssue, canNextIssue } = useMemo(() => {
@@ -211,9 +271,9 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     issueChat.flashPromptStatus({ kind: "issue_marked_done", message: "Marked as done" }, 3000);
 
     if (nextId) {
-      router.push(`/issues/${encodeURIComponent(nextId)}?list=${encodeURIComponent(listMode)}`);
+      navigateToIssue(nextId);
     } else {
-      router.push("/issues");
+      navigateToList();
     }
   }, [
     enqueueGithubStatusLabelSyncIfNeeded,
@@ -222,7 +282,8 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     issueId,
     listIssueIds,
     listMode,
-    router,
+    navigateToIssue,
+    navigateToList,
     updateIssueStatus,
   ]);
 
@@ -736,6 +797,7 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
         closeHref={
           listMode === "done" ? "/issues/completed" : listMode === "sent" ? "/issues/sent" : "/issues"
         }
+        onCloseAction={(onCloseAction || onNavigateToListAction) ? navigateToList : undefined}
         onReply={openReply}
         onPrevIssue={() => navigateIssueRelative(-1)}
         onNextIssue={() => navigateIssueRelative(1)}

@@ -1,17 +1,19 @@
 import { ReplyButton } from "./reply-button";
 import type { IssuesInboxItemModel } from "./types";
 import { AvatarMarble } from "@/app/components/avatar-marble";
-import Link from "next/link";
 import { IssueStatusIcon } from "@/app/components/icons/issue-status-icon";
 
 export function IssuesInboxListItem({
   item,
   mode = "inbox",
+  onOpenIssue,
 }: {
   item: IssuesInboxItemModel;
   mode?: "inbox" | "done" | "sent";
+  onOpenIssue?: (issueId: string) => void;
 }) {
   const href = `/issues/${encodeURIComponent(item.id)}?list=${encodeURIComponent(mode)}`;
+  const handleOpen = () => onOpenIssue?.(item.id);
 
   return (
     <div
@@ -22,10 +24,19 @@ export function IssuesInboxListItem({
       ].join(" ")}
     >
       {/* Card link */}
-      <Link
+      <a
         href={href}
         aria-label={`Open issue ${item.id}`}
         className="absolute inset-0 z-10 rounded-[14px] outline-none"
+        onClick={(e) => {
+          if (e.defaultPrevented) return;
+          if (e.button !== 0) return;
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          if (!onOpenIssue) return;
+
+          e.preventDefault();
+          handleOpen();
+        }}
       />
 
       {/* Header */}
@@ -96,7 +107,7 @@ export function IssuesInboxListItem({
             </div>
 
             <div className="flex shrink-0 items-center gap-1 pointer-events-auto relative z-20">
-              <ReplyButton label={item.ctaLabel} />
+              <ReplyButton label={item.ctaLabel} onClick={handleOpen} />
             </div>
           </div>
         </div>
