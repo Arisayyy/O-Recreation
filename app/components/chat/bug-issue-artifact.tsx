@@ -2,12 +2,15 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "convex/react";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
 import { uploadToUploadsRoute } from "@/app/lib/uploads";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { TrashIcon } from "@/app/components/icons/trash-icon";
 import { PaperclipIcon } from "@/app/components/icons/paperclip-icon";
 import { MenuDropdown, type MenuDropdownItem } from "@/app/components/menu-dropdown";
+import { api } from "@/convex/_generated/api";
+import { CheckCircleIcon } from "@/app/components/icons/check-circle-icon";
 
 export type BugIssueArtifactDraft = {
   title: string;
@@ -108,6 +111,7 @@ function appendSection(out: string, heading: string, content: string) {
 export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtifactDraft }) {
   const router = useRouter();
   const issues = issuesCollection.get();
+  const enqueueIssueSync = useMutation(api.githubIssues.enqueueIssueSync);
 
   const initialTitle = initialDraft.title ?? "";
   const initialBody = initialDraft.body?.trim() ?? "";
@@ -196,6 +200,25 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
               Issue draft discarded.
             </span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (createdIssueId) {
+    return (
+      <div className="not-prose text-copy w-full">
+        <div className="py-1">
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-lg px-2 py-1 text-left outline-none hover:bg-surface-strong focus-visible:ring-2 focus-visible:ring-neutral-strong"
+            onClick={() => router.push(`/issues/${createdIssueId}`)}
+          >
+            <CheckCircleIcon className="size-3 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+              Issue created. Click to open it.
+            </span>
+          </button>
         </div>
       </div>
     );
@@ -357,7 +380,7 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
           <div className="px-3 pt-1">
             <div className="flex select-none items-center ">
               <div className="rounded-lg">
-                <span className="text-copy text-orchid-muted">Bug issue (draft)</span>
+                <span className="text-copy text-orchid-muted">Bug issue</span>
               </div>
             </div>
           </div>
@@ -372,18 +395,7 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
               <div className="text-[12px] font-medium leading-[17.6px] text-orchid-muted" />
             </div>
 
-            {createdIssueId ? (
-              <button
-                type="button"
-                className={[hoverActionButtonClass(), "shrink-0"].join(" ")}
-                onClick={() => router.push(`/issues/${createdIssueId}`)}
-              >
-                <div aria-hidden="true" className={hoverActionButtonBgClass()} />
-                <div className="relative z-10 flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
-                  <div className="px-0.5 leading-none transition-transform">Open</div>
-                </div>
-              </button>
-            ) : null}
+            {createdIssueId ? null : null}
           </div>
 
           <div className="relative">
@@ -786,7 +798,19 @@ export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtif
                             name: createdBy.name ?? "Anonymous",
                             color: createdBy.color ?? "#999999",
                           },
+                          githubRepo: "Arisayyy/rift",
+                          githubSyncStatus: "pending",
                         });
+                        try {
+                          await enqueueIssueSync({ issueId: id });
+                        } catch (e) {
+                          // Issue is created locally; GitHub sync can be retried manually if desired.
+                          setError(
+                            e instanceof Error
+                              ? `Issue created, but GitHub sync failed: ${e.message}`
+                              : "Issue created, but GitHub sync failed.",
+                          );
+                        }
                         setCreatedIssueId(id);
                       } catch (e) {
                         setError(e instanceof Error ? e.message : "Failed to create issue.");

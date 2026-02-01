@@ -1,10 +1,12 @@
 "use client";
 
 import { useLiveQuery } from "@tanstack/react-db";
+import { useMutation } from "convex/react";
 import { IssuesInboxListItem } from "./list-item";
 import type { IssuesInboxItemModel } from "./types";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
+import { api } from "@/convex/_generated/api";
 
 export function IssuesInboxList({
   items,
@@ -12,6 +14,7 @@ export function IssuesInboxList({
   items?: IssuesInboxItemModel[];
 }) {
   const collection = issuesCollection.get();
+  const enqueueIssueSync = useMutation(api.githubIssues.enqueueIssueSync);
   const { data: issues, isLoading, isError } = useLiveQuery(collection);
 
   const computedItems: IssuesInboxItemModel[] =
@@ -61,18 +64,26 @@ export function IssuesInboxList({
         <button
           type="button"
           className="mt-3 inline-flex h-8 items-center rounded-orchid-pill border border-neutral bg-white px-3 text-sm font-medium text-orchid-ink shadow-xs"
-          onClick={() => {
+          onClick={async () => {
             const now = Date.now();
             const author = getAnonymousIdentity();
+            const id = globalThis.crypto?.randomUUID?.() ?? `${now}`;
             collection.insert({
-              id: globalThis.crypto?.randomUUID?.() ?? `${now}`,
+              id,
               title: "New issue",
               body: "Describe the issue…",
               status: "todo",
               createdAt: now,
               updatedAt: now,
               createdBy: { name: author.name ?? "Anonymous", color: author.color ?? "#6366f1" },
+              githubRepo: "Arisayyy/rift",
+              githubSyncStatus: "pending",
             });
+            try {
+              await enqueueIssueSync({ issueId: id });
+            } catch {
+              // Keep the issue; GitHub sync isn't critical for inbox demo UX.
+            }
           }}
         >
           Create issue

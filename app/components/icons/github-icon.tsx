@@ -10,7 +10,7 @@ export function GitHubIcon({ className = "h-4 w-4" }: { className?: string }) {
       data-slot="icon"
       className={className}
     >
-      <rect width="16" height="16" fill="black" />
+      <rect width="16" height="16" rx="3.5" fill="black" />
       <path
         fillRule="evenodd"
         clipRule="evenodd"

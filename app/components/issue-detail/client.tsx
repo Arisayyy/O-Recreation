@@ -434,7 +434,13 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
 
   return (
     <div className="font-orchid-ui leading-6">
-      <IssueDetailHeader title={issue.title} onReply={openReply} />
+      <IssueDetailHeader
+        title={issue.title}
+        onReply={openReply}
+        githubIssueUrl={(issue as any).githubIssueUrl}
+        githubSyncStatus={(issue as any).githubSyncStatus}
+        githubSyncError={(issue as any).githubSyncError}
+      />
 
       <div
         className="mx-auto w-full max-w-2xl px-5 pb-8 md:px-0"

@@ -11,8 +11,15 @@ const IssueStatus = v.union(
   v.literal("canceled"),
 );
 
+const GithubSyncStatus = v.union(
+  v.literal("pending"),
+  v.literal("creating"),
+  v.literal("synced"),
+  v.literal("error"),
+);
+
 export const issuesSchema = schema.define({
-  version: 1,
+  version: 2,
   shape: v.object({
     id: v.string(),
     title: v.string(),
@@ -25,6 +32,12 @@ export const issuesSchema = schema.define({
       color: v.string(),
       avatar: v.optional(v.string()),
     }),
+    githubIssueUrl: v.optional(v.string()),
+    githubIssueNumber: v.optional(v.number()),
+    githubRepo: v.optional(v.string()),
+    githubSyncStatus: v.optional(GithubSyncStatus),
+    githubSyncError: v.optional(v.string()),
+    githubSyncedAt: v.optional(v.number()),
   }),
 });
 
@@ -59,6 +72,12 @@ export default defineSchema({
         color: v.string(),
         avatar: v.optional(v.string()),
       }),
+      githubIssueUrl: v.optional(v.string()),
+      githubIssueNumber: v.optional(v.number()),
+      githubRepo: v.optional(v.string()),
+      githubSyncStatus: v.optional(GithubSyncStatus),
+      githubSyncError: v.optional(v.string()),
+      githubSyncedAt: v.optional(v.number()),
     },
     (t: TableDefinition) =>
       t
@@ -67,7 +86,8 @@ export default defineSchema({
         .index("by_timestamp", ["timestamp"])
         // Useful query indexes
         .index("by_status", ["status"])
-        .index("by_updatedAt", ["updatedAt"]),
+        .index("by_updatedAt", ["updatedAt"])
+        .index("by_githubSyncStatus", ["githubSyncStatus"]),
   ),
 
   issueMessages: schema.table(

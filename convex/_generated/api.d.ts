@@ -9,6 +9,8 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as githubIssues from "../githubIssues.js";
+import type * as githubIssuesNode from "../githubIssuesNode.js";
 import type * as http from "../http.js";
 import type * as issueMessages from "../issueMessages.js";
 import type * as issues from "../issues.js";
@@ -21,6 +23,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  githubIssues: typeof githubIssues;
+  githubIssuesNode: typeof githubIssuesNode;
   http: typeof http;
   issueMessages: typeof issueMessages;
   issues: typeof issues;
