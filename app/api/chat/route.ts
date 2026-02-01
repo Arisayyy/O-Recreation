@@ -1,4 +1,4 @@
-import { convertToModelMessages, jsonSchema, stepCountIs, streamText, tool, UIMessage } from "ai";
+import { convertToModelMessages, jsonSchema, smoothStream, stepCountIs, streamText, tool, UIMessage } from "ai";
 import { webSearch } from "@exalabs/ai-sdk";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
@@ -8,6 +8,8 @@ export const maxDuration = 60;
 type RequestedTools = {
   exa?: boolean;
 };
+
+type ChatMode = "chat" | "issue-chat";
 
 const EXA_MENTION_REPLACE_RE = /(^|\s)@exa\b/gi;
 const MAX_ISSUES_LIMIT = 100;
@@ -55,12 +57,47 @@ function exaNotConfiguredTool() {
   });
 }
 
+function systemPrompt(mode: ChatMode, wantsExa: boolean): string {
+  if (mode === "chat") {
+    return [
+      "You are Orchid, a helpful assistant.",
+      "When the user asks to create/file a bug issue, you MUST call the createBugIssueArtifact tool to produce a structured draft the user can review and edit before submitting.",
+      "Keep the title concise and actionable. Put the main description in `body`. Put reproduction steps, expected vs actual behavior, and debug logs/links in their respective fields when available.",
+      "Before creating the draft, say a confirmation message.",
+      "You have access to a listIssues tool that returns a bounded list of issues (active/done/all). Use it when you need context about existing issues (status, duplicates, priorities), but do not call it unless it is actually relevant.",
+      "When presenting multiple issues together, use a markdown table with helpful columns (e.g. ID, Title, Status, Updated, Link). When presenting issues one-by-one, use headings (## for each issue, ### for sections).",
+      wantsExa
+        ? "The user enabled web search. Use the webSearch tool when you need up-to-date information, and include sources/links when possible."
+        : "Web search is disabled unless the user enables it.",
+      "After using any tool, you MUST write a normal assistant message that uses the tool output. Do not end the response with only a tool call.",
+    ].join(" ");
+  }
+
+  return [
+    "You are Orchid, a helpful assistant.",
+    "You are assisting within an existing issue detail page.",
+    "The conversation may include a hidden system message containing the issue and its persisted replies as context. Use that information to answer the user's questions or propose next steps.",
+    "You have access to a listIssues tool that returns a bounded list of issues (active/done/all). Use it when you need context about existing issues (status, duplicates, priorities), but do not call it unless it is actually relevant.",
+    wantsExa
+      ? "The user enabled web search. Use the webSearch tool when you need up-to-date information, and include sources/links when possible."
+      : "Web search is disabled unless the user enables it.",
+    "When presenting multiple issues together, use a markdown table with helpful columns (e.g. ID, Title, Status, Updated, Link). When presenting issues one-by-one, use headings (## for each issue, ### for sections).",
+    "After using any tool, you MUST write a normal assistant message that uses the tool output. Do not end the response with only a tool call.",
+  ].join(" ");
+}
+
 export async function POST(req: Request) {
   const {
     messages,
     requestedTools,
-  }: { messages: UIMessage[]; requestedTools?: RequestedTools } = await req.json();
+    chatMode,
+  }: {
+    messages: UIMessage[];
+    requestedTools?: RequestedTools;
+    chatMode?: ChatMode;
+  } = await req.json();
 
+  const mode: ChatMode = chatMode ?? "chat";
   const wantsExa = !!requestedTools?.exa;
   const modelMessages = stripExaMentionsForModel(messages);
 
@@ -71,21 +108,9 @@ export async function POST(req: Request) {
         only: ["openai"],
       },
     },
-    system:
-      [
-        "You are Orchid, a helpful assistant.",
-        "When the user asks to create/file a bug issue, you MUST call the createBugIssueArtifact tool to produce a structured draft the user can review and edit before submitting.",
-        "Keep the title concise and actionable. Put the main description in `body`. Put reproduction steps, expected vs actual behavior, and debug logs/links in their respective fields when available.",
-        "Before creating the draft, say a confirmation message.",
-        "You have access to a listIssues tool that returns a bounded list of issues (active/done/all). Use it when you need context about existing issues (status, duplicates, priorities), but do not call it unless it is actually relevant.",
-        "When presenting multiple issues together, use a markdown table with helpful columns (e.g. ID, Title, Status, Updated, Link). When presenting issues one-by-one, use headings (## for each issue, ### for sections).",
-        wantsExa
-          ? "The user enabled web search. Use the webSearch tool when you need up-to-date information, and include sources/links when possible."
-          : "Web search is disabled unless the user enables it.",
-        "After using any tool, you MUST write a normal assistant message that uses the tool output. Do not end the response with only a tool call.",
-      ].join(" "),
-    // Important: `streamText` defaults to stopWhen: stepCountIs(1), which can end
-    // immediately after a tool call + tool result. Use a tool-safe default for all tools.
+    experimental_transform: smoothStream(),
+    system: systemPrompt(mode, wantsExa),
+    // Tool-safe stop condition so tool calls still yield a final text response.
     stopWhen: stepCountIs(3),
     tools: {
       createBugIssueArtifact: tool({

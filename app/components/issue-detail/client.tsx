@@ -394,6 +394,7 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
           kind: "issueChatThinking";
           id: string;
           createdAt: number;
+          label?: string;
         }
       | {
           kind: "issueChatMessage";
@@ -464,31 +465,37 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
                 .join("\n")
             : "";
 
-        const toolMarkdown =
-          toolParts.length > 0
-            ? toolParts
-                .map((p) => {
-                  const name = getToolName(p);
-                  return name ? `- Tool: ${name}` : "";
-                })
-                .filter(Boolean)
-                .join("\n")
-            : "";
+        const toolLabel = (() => {
+          if (m.role !== "assistant") return null;
+          if (!isStreaming) return null;
+          const webSearchParts = toolParts.filter((p) => getToolName(p) === "webSearch");
+          const listIssuesParts = toolParts.filter((p) => getToolName(p) === "listIssues");
+          const isWebSearchPending = webSearchParts.some((p) => p.state !== "output-available");
+          const isListIssuesPending = listIssuesParts.some((p) => p.state !== "output-available");
+          if (isWebSearchPending) return "Searching...";
+          if (isListIssuesPending) return "Loading issues...";
+          const hasToolResults =
+            webSearchParts.length > 0 || listIssuesParts.length > 0 || toolParts.length > 0;
+          if (hasToolResults && markdown.length === 0 && fileParts.length === 0) return "Synthesizing...";
+          return null;
+        })();
 
-        const body = [markdown, filesMarkdown, toolMarkdown].filter(Boolean).join("\n\n").trim();
+        const body = [markdown, filesMarkdown].filter(Boolean).join("\n\n").trim();
         if (!body) {
           // Match /chat: show a "thinking" placeholder while the assistant is streaming.
+          // Also show tool-specific placeholders (e.g. Searching...) instead of rendering "Tool: webSearch".
           const isStreamingAssistantPlaceholder =
             m.role === "assistant" &&
             isStreaming &&
             markdown.length === 0 &&
             fileParts.length === 0 &&
             toolParts.length === 0;
-          if (isStreamingAssistantPlaceholder) {
+          if (toolLabel || isStreamingAssistantPlaceholder) {
             items.push({
               kind: "issueChatThinking",
               id: `issue-chat:thinking:${m.id}`,
-              createdAt: EPHEMERAL_BASE_TS + i,
+              createdAt: EPHEMERAL_BASE_TS + i * 2,
+              label: toolLabel ?? "Cerebrating...",
             });
           }
           continue;
@@ -500,11 +507,22 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
         items.push({
           kind: "issueChatMessage",
           id: `issue-chat:${m.id}`,
-          createdAt: EPHEMERAL_BASE_TS + i,
+          createdAt: EPHEMERAL_BASE_TS + i * 2,
           fromName: isUser ? myName : "Orchid",
           body,
           variant: isUser ? "chatUser" : "chatAssistant",
         });
+
+        // If the assistant wrote a preface (e.g. "I'll check...") and then is waiting on a tool,
+        // show the tool-specific indicator below it (matches /chat UX better).
+        if (toolLabel) {
+          items.push({
+            kind: "issueChatThinking",
+            id: `issue-chat:thinking:${m.id}:tool`,
+            createdAt: EPHEMERAL_BASE_TS + i * 2 + 1,
+            label: toolLabel,
+          });
+        }
       }
     }
 
@@ -783,7 +801,28 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
                     className={wrapperClass}
                   >
                     {blockItems.map((bi) => {
-                      if (bi.kind === "issueChatThinking") return renderThinking(bi.id);
+                      if (bi.kind === "issueChatThinking") {
+                        return (
+                          <div
+                            key={bi.id}
+                            className="group flex w-full items-end gap-2 py-4 is-assistant"
+                          >
+                            <div className="not-prose text-copy w-full">
+                              <div className="py-1">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="bg-ai animate-pulse-size size-2 rounded-full"
+                                    aria-hidden="true"
+                                  />
+                                  <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                                    {bi.label ?? "Cerebrating..."}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       // Issue chat messages are personal/ephemeral: no header/time label.
                       return (

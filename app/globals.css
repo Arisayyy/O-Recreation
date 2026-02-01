@@ -135,6 +135,33 @@ body {
   transform-origin: 4px 4px;
 }
 
+@keyframes orchid-issue-enter {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+
+.orchid-issue-enter {
+  opacity: 0;
+  will-change: opacity;
+  animation-name: orchid-issue-enter;
+  animation-duration: 120ms;
+  animation-timing-function: var(--ease-out-expo, ease-out);
+  animation-delay: var(--orchid-issue-enter-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orchid-issue-enter {
+    opacity: 1;
+    animation: none;
+  }
+}
+
 .bg-ai {
   background-color: #ad46ff;
 }

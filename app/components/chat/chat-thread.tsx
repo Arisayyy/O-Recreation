@@ -51,6 +51,8 @@ export function ChatThread() {
     () => sorted.filter((m) => m.role === "user").length,
     [sorted],
   );
+  const shouldDelayFirstAssistantPlaceholder =
+    userMessageCount === 1 && firstMessageAnim.phase === "userAnimating";
   const shouldAutoScroll = userMessageCount > 1;
   const prevUserMessageCountRef = useRef(userMessageCount);
   const lastUserMessageId = useMemo(() => {
@@ -369,7 +371,7 @@ export function ChatThread() {
             >
               <div className="text-copy overflow-hidden flex w-full flex-col gap-3 text-[14px] leading-[21px] group-[.is-user]:text-[18px] group-[.is-user]:leading-[27px]">
                 <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                  {isStreamingAssistantPlaceholder ? (
+                  {isStreamingAssistantPlaceholder && !shouldDelayFirstAssistantPlaceholder ? (
                     <div className="not-prose text-copy w-full">
                       <div className="py-1">
                         <div className="flex items-center gap-2">
@@ -541,6 +543,7 @@ export function ChatThread() {
           const last = sorted[sorted.length - 1];
           const needsTrailingAssistantRow = isStreaming && (!last || last.role === "user");
           if (!needsTrailingAssistantRow) return null;
+          if (shouldDelayFirstAssistantPlaceholder) return null;
 
           return (
             <div className={["group flex w-full items-end gap-2", "py-4", "is-assistant"].join(" ")}>

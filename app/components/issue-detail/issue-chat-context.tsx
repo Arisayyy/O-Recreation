@@ -56,7 +56,10 @@ export function IssueChatProvider({
   children: React.ReactNode;
 }) {
   const { messages, status, error, sendMessage, stop, setMessages } = useAIChat({
-    transport: new DefaultChatTransport({ api: "/api/issue-chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: { chatMode: "issue-chat" },
+    }),
   });
 
   const [promptStatus, setPromptStatus] = useState<PromptStatus>(null);

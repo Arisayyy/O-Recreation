@@ -1,13 +1,11 @@
 "use client";
 
 import { useLiveQuery } from "@tanstack/react-db";
-import { useMutation } from "convex/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { IssuesInboxListItem } from "./list-item";
 import type { IssuesInboxItemModel } from "./types";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
-import { api } from "@/convex/_generated/api";
 import { formatIssueStatusLabel } from "@/app/components/icons/issue-status-icon";
 import { useReplicateInitState } from "@/app/components/replicate-context";
 
@@ -65,7 +63,6 @@ function IssuesInboxListReady({
   mode: "inbox" | "done" | "sent";
 }) {
   const collection = issuesCollection.get();
-  const enqueueIssueSync = useMutation(api.githubIssues.enqueueIssueSync);
   const { data: issues, isLoading, isError } = useLiveQuery(collection);
   const [animateInitialLoad, setAnimateInitialLoad] = useState(false);
   const didTriggerAnimation = useRef(false);
@@ -109,7 +106,7 @@ function IssuesInboxListReady({
         };
       });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Only animate once, and only for the initial non-empty load.
     if (items) return;
     if (didTriggerAnimation.current) return;
@@ -136,62 +133,6 @@ function IssuesInboxListReady({
     return (
       <div className="rounded-xl border border-neutral bg-white p-4 font-orchid-ui text-sm leading-6 text-orchid-muted">
         Loading issues…
-      </div>
-    );
-  }
-
-  if (!items && computedItems.length === 0) {
-    return (
-      <div className="rounded-xl border border-neutral bg-white p-4 font-orchid-ui text-sm leading-6 text-orchid-ink">
-        {mode === "done" ? (
-          <>
-            <div className="font-medium">No done issues yet</div>
-            <div className="mt-1 text-orchid-muted">
-              Mark an issue as done and it will show up here.
-            </div>
-          </>
-        ) : mode === "sent" ? (
-          <>
-            <div className="font-medium">No sent issues yet</div>
-            <div className="mt-1 text-orchid-muted">
-              Issues that have been synced (or queued to sync) to GitHub will appear here.
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="font-medium">No issues yet</div>
-            <div className="mt-1 text-orchid-muted">
-              Create one to verify offline-first sync.
-            </div>
-            <button
-              type="button"
-              className="mt-3 inline-flex h-8 items-center rounded-orchid-pill border border-neutral bg-white px-3 text-sm font-medium text-orchid-ink shadow-xs"
-              onClick={async () => {
-                const now = Date.now();
-                const author = getAnonymousIdentity();
-                const id = globalThis.crypto?.randomUUID?.() ?? `${now}`;
-                collection.insert({
-                  id,
-                  title: "New issue",
-                  body: "Describe the issue…",
-                  status: "todo",
-                  createdAt: now,
-                  updatedAt: now,
-                  createdBy: { name: author.name ?? "Anonymous", color: author.color ?? "#6366f1" },
-                  githubRepo: "Arisayyy/rift",
-                  githubSyncStatus: "pending",
-                });
-                try {
-                  await enqueueIssueSync({ issueId: id });
-                } catch {
-                  // Keep the issue; GitHub sync isn't critical for inbox demo UX.
-                }
-              }}
-            >
-              Create issue
-            </button>
-          </>
-        )}
       </div>
     );
   }
