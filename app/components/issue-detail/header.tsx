@@ -16,22 +16,26 @@ import { IssueStatusIcon, formatIssueStatusLabel, type IssueStatusKey } from "@/
 
 export function IssueDetailHeader({
   title,
+  closeHref = "/issues",
   onReply,
   onPrevIssue,
   onNextIssue,
   prevIssueDisabled,
   nextIssueDisabled,
+  onDone,
   githubIssueUrl,
   githubSyncStatus,
   status,
   onStatusChangeAction,
 }: {
   title: string;
+  closeHref?: string;
   onReply?: () => void;
   onPrevIssue?: () => void;
   onNextIssue?: () => void;
   prevIssueDisabled?: boolean;
   nextIssueDisabled?: boolean;
+  onDone?: () => void;
   githubIssueUrl?: string | null;
   githubSyncStatus?: "pending" | "creating" | "synced" | "error" | null;
   githubSyncError?: string | null;
@@ -48,7 +52,7 @@ export function IssueDetailHeader({
 
   return (
     <AltNavbar
-      closeHref="/issues"
+      closeHref={closeHref}
       title={<p className="m-0 truncate">{title}</p>}
       rightActions={
         <div className="flex gap-1">
@@ -142,7 +146,14 @@ export function IssueDetailHeader({
             onClick={onNextIssue}
             disabled={nextIssueDisabled}
           />
-          <SemiGhostButton icon={<CheckIcon className="h-4 w-4" />} label="Done" keycap="E" className="w-[92.1562px]" />
+          <SemiGhostButton
+            icon={<CheckIcon className="h-4 w-4" />}
+            label="Done"
+            keycap="E"
+            className="w-[92.1562px]"
+            onClick={onDone}
+            disabled={status === "done"}
+          />
           <SemiGhostButton
             icon={<ReplyIcon className="h-4 w-4" />}
             label="Reply"

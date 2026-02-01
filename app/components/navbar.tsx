@@ -261,7 +261,10 @@ export function Navbar() {
   return (
     <nav
       className={[
-        "z-50 flex-none py-5 px-6",
+        // Keep visible while scrolling (issues/sent/done pages use nested scrolling).
+        "sticky top-0 z-80 flex-none py-5 px-6",
+        // Ensure content doesn't visually overlap the bar.
+        "bg-background",
         "font-orchid-ui leading-6",
       ].join(" ")}
     >

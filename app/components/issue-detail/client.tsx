@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { issueMessages as issueMessagesCollection } from "@/app/collections/issueMessages";
 import { IssueDetailHeader } from "./header";
@@ -60,6 +60,13 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
 
 function IssueDetailClientReady({ issueId }: { issueId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const listMode = useMemo<"inbox" | "done" | "sent">(() => {
+    const raw = searchParams?.get("list");
+    if (raw === "done") return "done";
+    if (raw === "sent") return "sent";
+    return "inbox";
+  }, [searchParams]);
   const issues = issuesCollection.get();
   const messages = issueMessagesCollection.get();
   const issueChat = useIssueChat();
@@ -109,35 +116,115 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     [issueList, issueId],
   );
 
-  // Mirror the inbox ordering (IssuesInboxList): updatedAt desc.
-  const orderedIssueIds = useMemo(() => {
-    return [...(issueList ?? [])]
+  const myIdentityName = useMemo(() => getAnonymousIdentity().name ?? "Anonymous", []);
+
+  // When viewing a done issue in the "done" list and you change it to not-done,
+  // we keep you on the same issue (so you can see what you changed), but we still
+  // want K/J navigation to target the surrounding done issues.
+  const [doneAnchorIndex, setDoneAnchorIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setDoneAnchorIndex(null);
+  }, [issueId, listMode]);
+
+  // Mirror the list ordering (IssuesInboxList): updatedAt desc.
+  // Use the list context (inbox vs done) to decide which issues are navigable with K/J.
+  const listIssueIds = useMemo(() => {
+    const all = [...(issueList ?? [])];
+    const filtered =
+      listMode === "done"
+        ? all.filter((i) => (i.status as any) === "done")
+        : listMode === "sent"
+          ? all.filter((i) => {
+              const isSent = !!(i as any).githubSyncStatus || !!(i as any).githubIssueUrl;
+              const isMine = ((i as any).createdBy?.name ?? "Anonymous") === myIdentityName;
+              return isSent && isMine;
+            })
+          : all.filter((i) => (i.status as any) !== "done");
+    return filtered
       .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
       .map((i) => i.id);
-  }, [issueList]);
+  }, [issueList, listMode, myIdentityName]);
 
   const navigateIssueRelative = useCallback(
     (delta: -1 | 1) => {
-      if (orderedIssueIds.length === 0) return;
-      const idx = orderedIssueIds.indexOf(issueId);
-      if (idx < 0) return;
-      const nextIdx = idx + delta;
-      if (nextIdx < 0 || nextIdx >= orderedIssueIds.length) return;
-      const nextId = orderedIssueIds[nextIdx];
+      if (listIssueIds.length === 0) return;
+      let nextId: string | null = null;
+
+      if (listMode === "done" && (issue as any)?.status !== "done" && doneAnchorIndex != null) {
+        // Current issue is no longer part of the done list; treat it as sitting "between"
+        // done items at the index it used to occupy.
+        nextId =
+          delta === -1
+            ? listIssueIds[doneAnchorIndex - 1] ?? null
+            : listIssueIds[doneAnchorIndex] ?? null;
+      } else {
+        const idx = listIssueIds.indexOf(issueId);
+        if (idx < 0) return;
+        const nextIdx = idx + delta;
+        if (nextIdx < 0 || nextIdx >= listIssueIds.length) return;
+        nextId = listIssueIds[nextIdx] ?? null;
+      }
+
       if (!nextId || nextId === issueId) return;
-      router.push(`/issues/${encodeURIComponent(nextId)}`);
+      router.push(`/issues/${encodeURIComponent(nextId)}?list=${encodeURIComponent(listMode)}`);
     },
-    [issueId, orderedIssueIds, router],
+    [doneAnchorIndex, issue, issueId, listIssueIds, listMode, router],
   );
 
   const { canPrevIssue, canNextIssue } = useMemo(() => {
-    const idx = orderedIssueIds.indexOf(issueId);
+    if (listIssueIds.length === 0) return { canPrevIssue: false, canNextIssue: false };
+
+    if (listMode === "done" && (issue as any)?.status !== "done" && doneAnchorIndex != null) {
+      return {
+        canPrevIssue: doneAnchorIndex > 0,
+        // Next uses the item that shifted into doneAnchorIndex after removal.
+        canNextIssue: doneAnchorIndex < listIssueIds.length,
+      };
+    }
+
+    const idx = listIssueIds.indexOf(issueId);
     if (idx < 0) return { canPrevIssue: false, canNextIssue: false };
-    return {
-      canPrevIssue: idx > 0,
-      canNextIssue: idx < orderedIssueIds.length - 1,
-    };
-  }, [issueId, orderedIssueIds]);
+    return { canPrevIssue: idx > 0, canNextIssue: idx < listIssueIds.length - 1 };
+  }, [doneAnchorIndex, issue, issueId, listIssueIds, listMode]);
+
+  const markDoneAndGoNext = useCallback(() => {
+    if ((issue as any)?.status === "done") return;
+    if (listMode === "done") return;
+
+    // Determine "next" based on the current inbox ordering before the status update.
+    const idx = listIssueIds.indexOf(issueId);
+    const nextId = idx >= 0 ? listIssueIds[idx + 1] ?? null : null;
+
+    updateIssueStatus("done" as any);
+    issueChat.flashPromptStatus({ kind: "issue_marked_done", message: "Marked as done" }, 3000);
+
+    if (nextId) {
+      router.push(`/issues/${encodeURIComponent(nextId)}?list=${encodeURIComponent(listMode)}`);
+    } else {
+      router.push("/issues");
+    }
+  }, [issue, issueChat, issueId, listIssueIds, listMode, router, updateIssueStatus]);
+
+  const onStatusChange = useCallback(
+    (next: import("@/app/components/icons/issue-status-icon").IssueStatusKey) => {
+      const prevStatus = (issue as any)?.status as string | undefined;
+      if (prevStatus === next) return;
+
+      // If we're browsing within the "done" list and we mark the current done issue as not-done,
+      // keep the user within the done flow (stay in the done list context).
+      if (listMode === "done" && prevStatus === "done" && next !== "done") {
+        // Remember where this issue was in the done ordering so K/J can continue
+        // navigating among the remaining done issues, while keeping the user here.
+        const idx = listIssueIds.indexOf(issueId);
+        setDoneAnchorIndex(idx >= 0 ? idx : null);
+        updateIssueStatus(next as any);
+        return;
+      }
+
+      updateIssueStatus(next as any);
+    },
+    [issue, issueId, listIssueIds, listMode, updateIssueStatus],
+  );
 
   const openReply = useCallback(() => {
     const name = issue?.createdBy?.name ?? "Anonymous";
@@ -202,6 +289,9 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
       if (action === "issue_detail_next_issue") {
         navigateIssueRelative(1);
       }
+      if (action === "issue_detail_mark_done") {
+        markDoneAndGoNext();
+      }
       if (action === "issue_detail_status_menu") {
         clickHotkeyTarget('[data-issue-detail-status-trigger="true"]');
       }
@@ -212,7 +302,7 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [issueId, navigateIssueRelative]);
+  }, [issueId, markDoneAndGoNext, navigateIssueRelative]);
 
   const issueContextText = useMemo(() => {
     if (!issue) return "";
@@ -588,16 +678,20 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     <div className="font-orchid-ui leading-6">
       <IssueDetailHeader
         title={issue.title}
+        closeHref={
+          listMode === "done" ? "/issues/completed" : listMode === "sent" ? "/issues/sent" : "/issues"
+        }
         onReply={openReply}
         onPrevIssue={() => navigateIssueRelative(-1)}
         onNextIssue={() => navigateIssueRelative(1)}
         prevIssueDisabled={!canPrevIssue}
         nextIssueDisabled={!canNextIssue}
+        onDone={markDoneAndGoNext}
         githubIssueUrl={(issue as any).githubIssueUrl}
         githubSyncStatus={(issue as any).githubSyncStatus}
         githubSyncError={(issue as any).githubSyncError}
         status={issue.status as any}
-        onStatusChangeAction={updateIssueStatus}
+        onStatusChangeAction={onStatusChange}
       />
 
       <div

@@ -359,6 +359,16 @@ export function Prompt({
     (canSendChatMessage && (chatStatus === "submitted" || chatStatus === "streaming")) ||
     (canSendIssueChat && (issueChat.status === "submitted" || issueChat.status === "streaming"));
 
+  const promptStatus = useMemo(() => {
+    if (isThinking) return { kind: "thinking" as const, message: "Thinking..." };
+    if (variant === "issues" && issueChat.promptStatus?.kind === "issue_marked_done") {
+      return { kind: "issue_marked_done" as const, message: issueChat.promptStatus.message };
+    }
+    return null;
+  }, [isThinking, issueChat.promptStatus, variant]);
+
+  const showPromptStatus = !!promptStatus;
+
   // If we leave `/chat` while the assistant is still streaming, stop the in-flight request.
   // This avoids leaking the "Thinking..." prompt UI onto unrelated routes after exiting chat.
   useEffect(() => {
@@ -637,7 +647,7 @@ export function Prompt({
           <div
             className={[
               "grid overflow-hidden transition-all duration-500 ease-out",
-              isThinking ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              showPromptStatus ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
             ].join(" ")}
           >
             <div className="min-h-0">
@@ -646,24 +656,28 @@ export function Prompt({
                   <div className="not-prose text-copy w-full flex-1 px-1">
                     <div className="px-1.5 py-1">
                       <div aria-live="polite" className="flex items-center gap-2">
-                        <div className="bg-ai animate-pulse-size size-2 rounded-full" aria-hidden="true" />
+                        <div className="size-2 rounded-full bg-ai" aria-hidden="true" />
                         <span className="text-copy text-orchid-muted text-sm leading-[21px]">
-                          Thinking...
+                          {promptStatus?.message ?? ""}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="group/button focus-visible:ring-neutral-strong relative inline-flex cursor-pointer rounded-lg whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2 h-7 px-1.5 shrink-0"
-                    onClick={() => chat.stop()}
-                  >
-                    <div className="absolute rounded-lg border transition-transform border-transparent bg-surface-strong opacity-0 group-hover/button:opacity-100 group-hover/button:blur-none group-hover/button:inset-0 inset-2 blur-sm group-active/button:inset-shadow-xs group-active/button:shadow-none" />
-                    <div className="text-copy relative z-10 flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
-                      <div className="text-copy px-0.5 leading-0 transition-transform">Cancel</div>
-                    </div>
-                  </button>
+                  {promptStatus?.kind === "thinking" ? (
+                    <button
+                      type="button"
+                      className="group/button focus-visible:ring-neutral-strong relative inline-flex cursor-pointer rounded-lg whitespace-nowrap transition-transform outline-none select-none focus-visible:ring-2 h-7 px-1.5 shrink-0"
+                      onClick={() => chat.stop()}
+                    >
+                      <div className="absolute rounded-lg border transition-transform border-transparent bg-surface-strong opacity-0 group-hover/button:opacity-100 group-hover/button:blur-none group-hover/button:inset-0 inset-2 blur-sm group-active/button:inset-shadow-xs group-active/button:shadow-none" />
+                      <div className="text-copy relative z-10 flex items-center gap-1 text-sm leading-[21px] text-orchid-muted group-hover/button:text-orchid-ink">
+                        <div className="text-copy px-0.5 leading-0 transition-transform">Cancel</div>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="h-7 shrink-0" aria-hidden="true" />
+                  )}
                 </div>
               </div>
             </div>

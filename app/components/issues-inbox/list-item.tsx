@@ -4,8 +4,14 @@ import { AvatarMarble } from "@/app/components/avatar-marble";
 import Link from "next/link";
 import { IssueStatusIcon } from "@/app/components/icons/issue-status-icon";
 
-export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
-  const href = `/issues/${encodeURIComponent(item.id)}`;
+export function IssuesInboxListItem({
+  item,
+  mode = "inbox",
+}: {
+  item: IssuesInboxItemModel;
+  mode?: "inbox" | "done" | "sent";
+}) {
+  const href = `/issues/${encodeURIComponent(item.id)}?list=${encodeURIComponent(mode)}`;
 
   return (
     <div

@@ -1,9 +1,16 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useChat as useAIChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
+
+export type PromptStatus =
+  | {
+      kind: "issue_marked_done";
+      message: string;
+    }
+  | null;
 
 type IssueChatContextValue = Pick<
   ReturnType<typeof useAIChat>,
@@ -12,6 +19,8 @@ type IssueChatContextValue = Pick<
   issueId: string | null;
   clear: () => void;
   setIssueContext: (contextText: string) => void;
+  promptStatus: PromptStatus;
+  flashPromptStatus: (status: Exclude<PromptStatus, null>, ttlMs?: number) => void;
 };
 
 const IssueChatContext = createContext<IssueChatContextValue | null>(null);
@@ -42,6 +51,9 @@ export function IssueChatProvider({
     transport: new DefaultChatTransport({ api: "/api/issue-chat" }),
   });
 
+  const [promptStatus, setPromptStatus] = useState<PromptStatus>(null);
+  const promptStatusTimerRef = useRef<number | null>(null);
+
   // Clear when switching issues (private + ephemeral per render, like /chat).
   useEffect(() => {
     setMessages([]);
@@ -53,6 +65,29 @@ export function IssueChatProvider({
   useEffect(() => {
     lastContextTextRef.current = "";
   }, [issueId]);
+
+  useEffect(() => {
+    return () => {
+      if (promptStatusTimerRef.current != null) {
+        window.clearTimeout(promptStatusTimerRef.current);
+        promptStatusTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const flashPromptStatus = useCallback(
+    (next: Exclude<PromptStatus, null>, ttlMs: number = 1400) => {
+      setPromptStatus(next);
+      if (promptStatusTimerRef.current != null) {
+        window.clearTimeout(promptStatusTimerRef.current);
+      }
+      promptStatusTimerRef.current = window.setTimeout(() => {
+        setPromptStatus(null);
+        promptStatusTimerRef.current = null;
+      }, ttlMs);
+    },
+    [],
+  );
 
   const setIssueContext = useCallback(
     (contextText: string) => {
@@ -73,8 +108,32 @@ export function IssueChatProvider({
   );
 
   const value = useMemo<IssueChatContextValue>(() => {
-    return { issueId, messages, status, error, sendMessage, stop, setMessages, clear, setIssueContext };
-  }, [issueId, messages, status, error, sendMessage, stop, setMessages, clear, setIssueContext]);
+    return {
+      issueId,
+      messages,
+      status,
+      error,
+      sendMessage,
+      stop,
+      setMessages,
+      clear,
+      setIssueContext,
+      promptStatus,
+      flashPromptStatus,
+    };
+  }, [
+    issueId,
+    messages,
+    status,
+    error,
+    sendMessage,
+    stop,
+    setMessages,
+    clear,
+    setIssueContext,
+    promptStatus,
+    flashPromptStatus,
+  ]);
 
   return <IssueChatContext.Provider value={value}>{children}</IssueChatContext.Provider>;
 }
