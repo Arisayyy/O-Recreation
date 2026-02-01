@@ -34,6 +34,19 @@ export function ChatThread() {
     useOptimizedScroll(bottomRef);
 
   const sorted = useMemo(() => messages.slice(), [messages]);
+  const lastUserWantsExa = useMemo(() => {
+    const EXA_RE = /(^|\s)@exa\b/i;
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const m = sorted[i];
+      if (!m || m.role !== "user") continue;
+      const text = m.parts
+        .filter((p) => p.type === "text")
+        .map((p) => p.text)
+        .join("\n\n");
+      return EXA_RE.test(text);
+    }
+    return false;
+  }, [sorted]);
   const userMessageCount = useMemo(
     () => sorted.filter((m) => m.role === "user").length,
     [sorted],
@@ -260,6 +273,7 @@ export function ChatThread() {
         style={{ paddingBottom: BOTTOM_PADDING_PX }}
       >
         {sorted.map((m) => {
+          const isLastMessage = sorted[sorted.length - 1]?.id === m.id;
           const isUser = m.role === "user";
           const isFirstUserMessageInNewChat =
             isUser && userMessageCount === 1 && firstMessageAnim.phase !== "idle";
@@ -283,6 +297,41 @@ export function ChatThread() {
               const toolName = getToolName(p);
               return toolName === "createBugIssueArtifact" && p.state !== "output-available";
             });
+          const listIssuesParts = toolParts.filter((p) => getToolName(p) === "listIssues");
+          const isListIssuesPending = listIssuesParts.some((p) => p.state !== "output-available");
+          const isLoadingIssuesPlaceholder =
+            m.role === "assistant" &&
+            (status === "submitted" || status === "streaming") &&
+            isListIssuesPending;
+          const isSynthesizingIssuesPlaceholder =
+            m.role === "assistant" &&
+            (status === "submitted" || status === "streaming") &&
+            listIssuesParts.length > 0 &&
+            !isListIssuesPending &&
+            markdown.length === 0 &&
+            fileParts.length === 0;
+          const isPrefaceToIssuesLookupPlaceholder =
+            isLastMessage &&
+            m.role === "assistant" &&
+            (status === "submitted" || status === "streaming") &&
+            listIssuesParts.length === 0 &&
+            !isListIssuesPending &&
+            /(?:^|\b)(?:i['’]?ll|i will|let me)\s+(?:check|look(?:ing)?\s+up|fetch)\b[\s\S]{0,80}\bissues?\b/i.test(
+              markdown,
+            );
+          const webSearchParts = toolParts.filter((p) => getToolName(p) === "webSearch");
+          const isWebSearchPending = webSearchParts.some((p) => p.state !== "output-available");
+          const isUsingWebSearchPlaceholder =
+            m.role === "assistant" &&
+            (status === "submitted" || status === "streaming") &&
+            isWebSearchPending;
+          const isSynthesizingWebSearchPlaceholder =
+            m.role === "assistant" &&
+            (status === "submitted" || status === "streaming") &&
+            webSearchParts.length > 0 &&
+            !isWebSearchPending &&
+            markdown.length === 0 &&
+            fileParts.length === 0;
 
           // Fade the first assistant message in after the first user message animation completes.
           const shouldGateFirstAssistantFade =
@@ -339,6 +388,7 @@ export function ChatThread() {
                   {markdown.length > 0 ? (
                     <Streamdown
                       mode="static"
+                      linkSafety={{ enabled: false }}
                       rehypePlugins={streamdownRehypePlugins}
                       components={streamdownComponents}
                     >
@@ -356,6 +406,86 @@ export function ChatThread() {
                           />
                           <span className="text-copy text-orchid-muted text-sm leading-[21px]">
                             Transmuting...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isLoadingIssuesPlaceholder ? (
+                    <div className="not-prose text-copy w-full">
+                      <div className="py-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="bg-ai animate-pulse-size size-2 rounded-full"
+                            aria-hidden="true"
+                          />
+                          <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                            Loading issues...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isPrefaceToIssuesLookupPlaceholder ? (
+                    <div className="not-prose text-copy w-full">
+                      <div className="py-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="bg-ai animate-pulse-size size-2 rounded-full"
+                            aria-hidden="true"
+                          />
+                          <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                            Loading issues...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isSynthesizingIssuesPlaceholder ? (
+                    <div className="not-prose text-copy w-full">
+                      <div className="py-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="bg-ai animate-pulse-size size-2 rounded-full"
+                            aria-hidden="true"
+                          />
+                          <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                            Synthesizing...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isUsingWebSearchPlaceholder ? (
+                    <div className="not-prose text-copy w-full">
+                      <div className="py-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="bg-ai animate-pulse-size size-2 rounded-full"
+                            aria-hidden="true"
+                          />
+                          <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                            Searching...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isSynthesizingWebSearchPlaceholder ? (
+                    <div className="not-prose text-copy w-full">
+                      <div className="py-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="bg-ai animate-pulse-size size-2 rounded-full"
+                            aria-hidden="true"
+                          />
+                          <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                            Synthesizing...
                           </span>
                         </div>
                       </div>
@@ -405,6 +535,35 @@ export function ChatThread() {
             </div>
           );
         })}
+
+        {(() => {
+          const isStreaming = status === "submitted" || status === "streaming";
+          const last = sorted[sorted.length - 1];
+          const needsTrailingAssistantRow = isStreaming && (!last || last.role === "user");
+          if (!needsTrailingAssistantRow) return null;
+
+          return (
+            <div className={["group flex w-full items-end gap-2", "py-4", "is-assistant"].join(" ")}>
+              <div className="text-copy overflow-hidden flex w-full flex-col gap-3 text-[14px] leading-[21px]">
+                <div className="space-y-4 size-full">
+                  <div className="not-prose text-copy w-full">
+                    <div className="py-1">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="bg-ai animate-pulse-size size-2 rounded-full"
+                          aria-hidden="true"
+                        />
+                        <span className="text-copy text-orchid-muted text-sm leading-[21px]">
+                          {lastUserWantsExa ? "Searching..." : "Cerebrating..."}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div ref={contentEndRef} aria-hidden style={{ height: 0 }} />
 

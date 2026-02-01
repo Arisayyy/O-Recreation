@@ -66,12 +66,14 @@ function TriggerButton({ children }: { children: React.ReactNode }) {
 export function IssuePostMenu({
   align = "end",
   onDoneAction,
+  doneLabel = "Done",
   onForwardAction,
   onDeleteAction,
   onOpenChangeAction,
 }: {
   align?: "start" | "center" | "end";
   onDoneAction?: () => void;
+  doneLabel?: string;
   onForwardAction?: () => void;
   onDeleteAction?: () => void;
   onOpenChangeAction?: (open: boolean) => void;
@@ -100,7 +102,7 @@ export function IssuePostMenu({
                 {onDoneAction ? (
                   <Menu.Item className="group/zhover outline-none" onClick={onDoneAction}>
                     <button className="w-full outline-none" data-tabindex="" tabIndex={-1} type="button">
-                      <MenuRow icon={<CheckCircleIcon className="size-4" />} label="Done" />
+                      <MenuRow icon={<CheckCircleIcon className="size-4" />} label={doneLabel} />
                     </button>
                   </Menu.Item>
                 ) : null}

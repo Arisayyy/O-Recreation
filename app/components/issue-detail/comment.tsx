@@ -25,6 +25,7 @@ export const IssueComment = React.forwardRef(function IssueComment(
           <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             <Streamdown
               mode="static"
+              linkSafety={{ enabled: false }}
               rehypePlugins={streamdownRehypePlugins}
               components={streamdownComponents}
             >
@@ -43,6 +44,7 @@ export const IssueComment = React.forwardRef(function IssueComment(
           <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             <Streamdown
               mode="static"
+              linkSafety={{ enabled: false }}
               rehypePlugins={streamdownRehypePlugins}
               components={streamdownComponents}
             >
@@ -69,6 +71,7 @@ export const IssueComment = React.forwardRef(function IssueComment(
       <div className="px-2 pb-1.5 text-sm leading-[21px] text-orchid-ink">
         <Streamdown
           mode="static"
+          linkSafety={{ enabled: false }}
           rehypePlugins={streamdownRehypePlugins}
           components={streamdownComponents}
         >

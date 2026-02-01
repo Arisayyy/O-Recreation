@@ -843,7 +843,16 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
                         attachments: [],
                       }}
                       onReplyAction={() => openReplyTo({ name: item.fromName, avatarId: item.fromAvatarId })}
-                      onDoneAction={isMainIssuePost ? markDoneAndGoNext : undefined}
+                      onDoneAction={
+                        isMainIssuePost
+                          ? (issue as any)?.status === "done"
+                            ? () => onStatusChange("in_progress" as any)
+                            : markDoneAndGoNext
+                          : undefined
+                      }
+                      doneLabel={
+                        isMainIssuePost ? (((issue as any)?.status === "done" ? "Mark as not done" : "Done") as string) : undefined
+                      }
                       onDeleteAction={
                         canRemovePost
                           ? () => {

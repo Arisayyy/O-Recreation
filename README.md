@@ -11,6 +11,8 @@ This repository is an **educational, non-commercial recreation** inspired by the
 ## What this repo focuses on
 
 - **Issue creation and management**: an inbox-style workflow to create, review, and manage issues.
+- **AI chats that create artifacts**: the AI can generate structured “rtifacts (e.g. issue/bug writeups) as part of the conversation.
+- **AI tools**: the AI can use tools to search existing issues in the inbox and to run web searches when needed.
 - **Local-first sync**: local-first patterns and replication so the app stays responsive and usable while syncing.
 - **GitHub sync**: issues created in the app are **automatically synced** to this GitHub repo.
 

@@ -68,11 +68,13 @@ export function IssueThreadMessage({
   message,
   onReplyAction,
   onDoneAction,
+  doneLabel,
   onDeleteAction,
 }: {
   message: IssueThreadMessageModel;
   onReplyAction?: () => void;
   onDoneAction?: () => void;
+  doneLabel?: string;
   onDeleteAction?: () => void;
 }) {
   const attachments = message.attachments ?? [];
@@ -168,6 +170,7 @@ export function IssueThreadMessage({
                 align="end"
                 onOpenChangeAction={setIsPostMenuOpen}
                 onDoneAction={onDoneAction}
+                doneLabel={doneLabel}
                 onForwardAction={() => {
                   // TODO: wire to real state / API.
                 }}
@@ -203,6 +206,7 @@ export function IssueThreadMessage({
               >
                 <Streamdown
                   mode="static"
+                  linkSafety={{ enabled: false }}
                   rehypePlugins={streamdownRehypePlugins}
                   components={streamdownComponents}
                 >

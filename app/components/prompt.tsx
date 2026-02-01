@@ -66,6 +66,8 @@ const CONNECTION_ITEMS: ReadonlyArray<ConnectionItem> = [
 
 const MAX_ATTACHMENTS = 10;
 
+const EXA_MENTION_TEST_RE = /(^|\s)@exa\b/i;
+
 function menuPanelClassName() {
   // Match the dropdown panel structure in the reference design.
   return [
@@ -439,12 +441,16 @@ export function Prompt({
     if (isUploadingFiles) return;
 
     const msg = serializedValue.trim();
+    const wantsExa = EXA_MENTION_TEST_RE.test(msg);
     const parts = [
       ...(msg.length ? [{ type: "text" as const, text: msg }] : []),
       ...pendingFiles.map((p) => p.part),
     ];
 
-    void issueChat.sendMessage({ role: "user", parts });
+    void issueChat.sendMessage(
+      { role: "user", parts },
+      { body: { requestedTools: { exa: wantsExa } } },
+    );
 
     resetComposer();
     setPendingFiles([]);
@@ -460,6 +466,7 @@ export function Prompt({
     if (isUploadingFiles) return;
 
     const msg = serializedValue.trim();
+    const wantsExa = EXA_MENTION_TEST_RE.test(msg);
     const parts = [
       ...(msg.length ? [{ type: "text" as const, text: msg }] : []),
       ...pendingFiles.map((p) => p.part),
@@ -477,10 +484,16 @@ export function Prompt({
       }
 
       chat.clear();
-      void chat.sendMessage({ role: "user", parts });
+      void chat.sendMessage(
+        { role: "user", parts },
+        { body: { requestedTools: { exa: wantsExa } } },
+      );
       router.push("/chat");
     } else {
-      void chat.sendMessage({ role: "user", parts });
+      void chat.sendMessage(
+        { role: "user", parts },
+        { body: { requestedTools: { exa: wantsExa } } },
+      );
     }
 
     resetComposer();
@@ -661,7 +674,13 @@ export function Prompt({
                   <div className="not-prose text-copy w-full flex-1 px-1">
                     <div className="px-1.5 py-1">
                       <div aria-live="polite" className="flex items-center gap-2">
-                        <div className="size-2 rounded-full bg-ai" aria-hidden="true" />
+                        <div
+                          className={[
+                            "size-2 rounded-full bg-ai",
+                            promptStatus?.kind === "thinking" ? "animate-pulse-size" : "",
+                          ].join(" ")}
+                          aria-hidden="true"
+                        />
                         <span className="text-copy text-orchid-muted text-sm leading-[21px]">
                           {promptStatus?.message ?? ""}
                         </span>
@@ -695,6 +714,7 @@ export function Prompt({
                 <div
                   className="relative flex flex-1 cursor-text pl-1.5 transition-colors [--lh:1lh]"
                   onMouseDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
                     e.preventDefault();
                     composerRef.current?.focus();
                   }}
@@ -713,6 +733,7 @@ export function Prompt({
                         "max-h-40 overflow-y-auto hide-scrollbar",
                         "text-sm leading-[21px] text-orchid-ink",
                         "whitespace-pre-wrap break-words",
+                        "select-text",
                         "outline-none",
                       ].join(" ")}
                       onInput={() => syncFromComposer()}
