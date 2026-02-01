@@ -91,6 +91,7 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
   const contentEndRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
   const lastSpacerHeightRef = useRef<number>(0);
+  const mountedAtRef = useRef<number>(0);
 
   const openReplyTo = useCallback((target: { name: string; avatarId?: string } | null) => {
     setReplyTo(target);
@@ -543,17 +544,23 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     [feed, myName],
   );
   const prevUserMessageCountRef = useRef(userMessageCount);
-  const lastUserMessageId = useMemo(() => {
+  const lastUserMessage = useMemo<{ id: string; createdAt: number } | null>(() => {
     for (let i = feed.length - 1; i >= 0; i--) {
       const item = feed[i];
       if (!item) continue;
       if (!("fromName" in item)) continue;
       if (item.fromName !== myName) continue;
       if (item.kind === "reply" && item.id.startsWith("issue:")) continue;
-      return item.id;
+      return { id: item.id, createdAt: item.createdAt };
     }
     return null;
   }, [feed, myName]);
+  const lastUserMessageId = lastUserMessage?.id ?? null;
+
+  useLayoutEffect(() => {
+    mountedAtRef.current = Date.now();
+    prevUserMessageCountRef.current = 0;
+  }, [issueId]);
 
   const getScrollParent = useCallback((node: HTMLElement | null) => {
     let el: HTMLElement | null = node?.parentElement ?? null;
@@ -686,12 +693,17 @@ function IssueDetailClientReady({ issueId }: { issueId: string }) {
     if (userMessageCount < 1) return;
     if (userMessageCount <= prev) return;
 
+    const newest = lastUserMessage;
+    if (!newest) return;
+    const createdAt = newest.createdAt ?? 0;
+    if (createdAt < mountedAtRef.current - 1000) return;
+
     recalcSpacer();
     lastUserMessageRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
-  }, [recalcSpacer, userMessageCount]);
+  }, [lastUserMessage, recalcSpacer, userMessageCount]);
 
   if (issuesError || messagesError) {
     return (
