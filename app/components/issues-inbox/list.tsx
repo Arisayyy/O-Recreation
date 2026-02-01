@@ -7,6 +7,7 @@ import type { IssuesInboxItemModel } from "./types";
 import { issues as issuesCollection } from "@/app/collections/issues";
 import { getAnonymousIdentity } from "@/app/lib/replicate/anonymousIdentity";
 import { api } from "@/convex/_generated/api";
+import { formatIssueStatusLabel } from "@/app/components/icons/issue-status-icon";
 
 export function IssuesInboxList({
   items,
@@ -27,12 +28,13 @@ export function IssuesInboxList({
         return {
           id: issue.id,
           kind: "issue",
+          status: issue.status,
           avatarInitial: initial,
           avatarId: avatarName,
           avatarName,
           fromLabel: `me, ${avatarName}`,
           summary: issue.title,
-          draftTitle: issue.status,
+          draftTitle: formatIssueStatusLabel(issue.status),
           draftBody: issue.body || "No description yet.",
           ctaLabel: "Open",
         };

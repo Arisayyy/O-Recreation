@@ -20,6 +20,16 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
   const issues = issuesCollection.get();
   const messages = issueMessagesCollection.get();
   const issueChat = useIssueChat();
+  const updateIssueStatus = useCallback(
+    (next: import("@/app/components/icons/issue-status-icon").IssueStatusKey) => {
+      const now = Date.now();
+      issues.update(issueId, (draft: any) => {
+        draft.status = next;
+        draft.updatedAt = now;
+      });
+    },
+    [issueId, issues],
+  );
 
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<{ name: string; avatarId?: string } | null>(null);
@@ -440,6 +450,8 @@ export function IssueDetailClient({ issueId }: { issueId: string }) {
         githubIssueUrl={(issue as any).githubIssueUrl}
         githubSyncStatus={(issue as any).githubSyncStatus}
         githubSyncError={(issue as any).githubSyncError}
+        status={issue.status as any}
+        onStatusChangeAction={updateIssueStatus}
       />
 
       <div

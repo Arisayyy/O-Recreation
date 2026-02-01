@@ -1,8 +1,8 @@
 import { ReplyButton } from "./reply-button";
-import { DraftIcon } from "@/app/components/icons/draft-icon";
 import type { IssuesInboxItemModel } from "./types";
 import { AvatarMarble } from "@/app/components/avatar-marble";
 import Link from "next/link";
+import { IssueStatusIcon } from "@/app/components/icons/issue-status-icon";
 
 export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
   const href = `/issues/${encodeURIComponent(item.id)}`;
@@ -69,7 +69,7 @@ export function IssuesInboxListItem({ item }: { item: IssuesInboxItemModel }) {
         <div className="space-y-2">
           <div className="flex items-center gap-3 px-1 py-1">
             <div className="flex min-w-0 flex-1 items-center gap-1.5 select-none px-1.5">
-              <DraftIcon />
+              <IssueStatusIcon status={item.status} className="h-[14px] w-[14px] shrink-0" />
 
               <div className="flex min-w-0 flex-1 flex-row items-center gap-1">
                 <div className="flex min-w-0 items-center gap-1.5">

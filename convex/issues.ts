@@ -8,6 +8,7 @@ const IssueStatus = v.union(
   v.literal("backlog"),
   v.literal("todo"),
   v.literal("in_progress"),
+  v.literal("in_review"),
   v.literal("done"),
   v.literal("canceled"),
 );

@@ -7,20 +7,38 @@ import { GitHubIcon } from "../icons/github-icon";
 import { AltNavbar } from "@/app/components/alt-navbar";
 import {
   SemiGhostButton,
+  semiGhostButtonBaseClass,
+  semiGhostButtonBgClass,
+  semiGhostButtonInnerClass,
 } from "./semi-ghost-button";
+import { MenuDropdown, type MenuDropdownItem } from "@/app/components/menu-dropdown";
+import { IssueStatusIcon, formatIssueStatusLabel, type IssueStatusKey } from "@/app/components/icons/issue-status-icon";
 
 export function IssueDetailHeader({
   title,
   onReply,
   githubIssueUrl,
   githubSyncStatus,
+  status,
+  onStatusChangeAction,
 }: {
   title: string;
   onReply?: () => void;
   githubIssueUrl?: string | null;
   githubSyncStatus?: "pending" | "creating" | "synced" | "error" | null;
   githubSyncError?: string | null;
+  status: IssueStatusKey;
+  onStatusChangeAction: (next: IssueStatusKey) => void;
 }) {
+  const STATUS_ITEMS: ReadonlyArray<MenuDropdownItem<IssueStatusKey>> = [
+    { value: "backlog", label: "Backlog" },
+    { value: "todo", label: "Todo" },
+    { value: "in_progress", label: "In Progress" },
+    { value: "in_review", label: "In Review" },
+    { value: "done", label: "Done" },
+    { value: "canceled", label: "Cancelled" },
+  ];
+
   return (
     <AltNavbar
       closeHref="/issues"
@@ -48,6 +66,41 @@ export function IssueDetailHeader({
               disabled
             />
           ) : null}
+
+          <MenuDropdown
+            value={status}
+            items={STATUS_ITEMS}
+            onChangeAction={onStatusChangeAction}
+            align="end"
+            triggerClassName="outline-none"
+            trigger={
+              <div className={[semiGhostButtonBaseClass, "px-1.5"].join(" ")}>
+                <div className={semiGhostButtonBgClass} />
+                <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
+                  <span className="block h-4 w-4 transition-transform">
+                    <IssueStatusIcon status={status} className="h-[14px] w-[14px]" />
+                  </span>
+                  <div className="px-[2px] leading-[0px] transition-transform">
+                    {formatIssueStatusLabel(status)}
+                  </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    className="size-4 text-orchid-muted"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+            }
+          />
+
           <SemiGhostButton icon={<ChevronUpIcon className="h-4 w-4" />} keycap="K" className="w-[50.0625px]" />
           <SemiGhostButton icon={<ChevronDownIcon className="h-4 w-4" />} keycap="J" className="w-[48.8594px]" />
           <SemiGhostButton icon={<CheckIcon className="h-4 w-4" />} label="Done" keycap="E" className="w-[92.1562px]" />

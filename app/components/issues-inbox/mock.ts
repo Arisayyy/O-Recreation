@@ -4,6 +4,7 @@ export const MOCK_ITEMS: IssuesInboxItemModel[] = [
   {
     id: "m1",
     kind: "issue",
+    status: "todo",
     avatarInitial: "R",
     avatarId: "me, Rishi at Polar",
     avatarName: "Rishi at Polar",
@@ -17,6 +18,7 @@ export const MOCK_ITEMS: IssuesInboxItemModel[] = [
   {
     id: "m2",
     kind: "issue",
+    status: "in_progress",
     avatarInitial: "A",
     avatarId: "me, API Gateway",
     avatarName: "API Gateway",

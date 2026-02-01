@@ -1,6 +1,7 @@
 export type IssuesInboxItemModel = {
   id: string;
   kind: "issue";
+  status: string;
   avatarInitial: string;
   avatarId?: string;
   avatarName?: string;
