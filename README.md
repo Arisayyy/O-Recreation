@@ -1,6 +1,8 @@
-## orchid (educational recreation)
+## Orchid (educational recreation)
 
-This repository is an **educational, non-commercial recreation** inspired by the product and UX of **`orchid.ai`** (“Orchid”).
+This repository is an **educational, non-commercial recreation** inspired by the product and UX of **`orchid.ai`**.
+
+<img width="1896" height="1038" alt="image" src="https://github.com/user-attachments/assets/54f977b5-f632-49ac-b53e-b02b95165016" />
 
 - **Attribution / rights**: All product concepts, branding, and original work belong to the Orchid team. **All rights reserved to them.**
 - **Intent**: This repo exists to learn from great engineering and product design. We are not affiliated with them Orchid.
