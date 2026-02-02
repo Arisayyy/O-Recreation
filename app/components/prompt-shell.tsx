@@ -180,6 +180,7 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
                   paddingRight: "1.25rem",
                 }}
               >
+                <IssuesPrefetch />
                 {children}
               </div>
             ) : (
