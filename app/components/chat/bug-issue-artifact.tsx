@@ -35,6 +35,9 @@ type Attachment = {
 type Severity = NonNullable<BugIssueArtifactDraft["severity"]>;
 
 const MAX_ATTACHMENTS = 10;
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50MB
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500MB
+const MAX_FILE_BYTES = 200 * 1024 * 1024; // 200MB (non-image/video)
 
 const SEVERITY_ITEMS: ReadonlyArray<MenuDropdownItem<Severity>> = [
   { value: "low", label: "Low" },
@@ -992,13 +995,24 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
 
               const next: Attachment[] = [];
               for (const f of filesToUpload) {
-                const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20MB
-                const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB
                 if (f.type.startsWith("image/") && f.size > MAX_IMAGE_BYTES) {
-                  throw new Error(`"${f.name}" is too large (max 20MB for images).`);
+                  throw new Error(
+                    `"${f.name}" is too large (max ${formatBytes(MAX_IMAGE_BYTES)} for images).`,
+                  );
                 }
                 if (f.type.startsWith("video/") && f.size > MAX_VIDEO_BYTES) {
-                  throw new Error(`"${f.name}" is too large (max 100MB for videos).`);
+                  throw new Error(
+                    `"${f.name}" is too large (max ${formatBytes(MAX_VIDEO_BYTES)} for videos).`,
+                  );
+                }
+                if (
+                  !f.type.startsWith("image/") &&
+                  !f.type.startsWith("video/") &&
+                  f.size > MAX_FILE_BYTES
+                ) {
+                  throw new Error(
+                    `"${f.name}" is too large (max ${formatBytes(MAX_FILE_BYTES)} for files).`,
+                  );
                 }
 
                 const res = await uploadToUploadsRoute({ file: f, prefix: "issues/" });

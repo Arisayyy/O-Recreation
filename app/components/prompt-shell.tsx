@@ -8,6 +8,7 @@ import { FirstMessageSendAnimationProvider } from "@/app/components/chat/first-m
 import { IssueChatProvider } from "@/app/components/issue-detail/issue-chat-context";
 import { ConversationPromptBackdrop } from "@/app/components/conversation-prompt-backdrop";
 import { IssuesPrefetch } from "@/app/components/issues-inbox/issues-prefetch";
+import { DmcaFab } from "@/app/components/dmca-fab";
 
 type PromptVariant = "home" | "issues" | "chat";
 type NavDirection = "toIssues" | "toHome";
@@ -213,6 +214,8 @@ export function PromptShell({ children }: { children: React.ReactNode }) {
                 issueIdForComment={issueIdForComment}
               />
             </div>
+
+            <DmcaFab />
           </div>
         </IssueChatProvider>
       </FirstMessageSendAnimationProvider>

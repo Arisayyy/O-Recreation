@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as dmca from "../dmca.js";
 import type * as githubIssueMessages from "../githubIssueMessages.js";
 import type * as githubIssues from "../githubIssues.js";
 import type * as githubIssuesNode from "../githubIssuesNode.js";
@@ -22,6 +23,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  dmca: typeof dmca;
   githubIssueMessages: typeof githubIssueMessages;
   githubIssues: typeof githubIssues;
   githubIssuesNode: typeof githubIssuesNode;

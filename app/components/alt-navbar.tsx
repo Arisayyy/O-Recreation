@@ -85,7 +85,7 @@ export function AltNavbar({
   return (
     <>
       {isSticky ? (
-        <div className="fixed inset-x-0 top-0 z-50 w-full">
+        <div className="fixed inset-x-0 top-0 z-50 w-full pointer-events-none">
           <div className="relative w-full">
             <ConversationPromptBackdrop
               edge="top"
@@ -96,7 +96,7 @@ export function AltNavbar({
             <nav
               ref={navRef}
               className={[
-                "relative z-20 px-6 py-5 font-orchid-ui leading-6",
+                "relative z-20 px-6 py-5 font-orchid-ui leading-6 pointer-events-auto",
                 // Use fixed positioning so it stays visible even with nested scroll containers.
                 "bg-transparent",
                 className ?? "",

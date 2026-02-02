@@ -5,13 +5,19 @@ This repository is an **educational, non-commercial recreation** inspired by the
 <img width="1896" height="1038" alt="image" src="https://github.com/user-attachments/assets/54f977b5-f632-49ac-b53e-b02b95165016" />
 
 - **Attribution / rights**: All product concepts, branding, and original work belong to the Orchid team. **All rights reserved to them.**
-- **Intent**: This repo exists to learn from great engineering and product design. We are not affiliated with them Orchid.
+- **Intent**: This repo exists to learn from great engineering and product design. We are not affiliated with Orchid.
 - **Not production-ready**: This codebase is **not intended for production use**. It’s a learning project and is not organized/structured for that.
+
+## License / trademark notice
+
+This project is licensed under the **MIT License** (see `LICENSE`). The MIT license applies only to the original code in this repository and **does not grant** any rights to any third-party trademarks, branding, product names, screenshots, or other proprietary assets.
+
+**Orchid** and **`orchid.ai`** are trademarks and/or property of their respective owners. This project is an educational recreation, is **not affiliated with or endorsed by** Orchid, and any third-party marks are used for identification/attribution only.
 
 ## What this repo focuses on
 
 - **Issue creation and management**: an inbox-style workflow to create, review, and manage issues.
-- **AI chats that create artifacts**: the AI can generate structured “rtifacts (e.g. issue/bug writeups) as part of the conversation.
+- **AI chats that create artifacts**: the AI can generate structured “artifacts (e.g. issue/bug writeups) as part of the conversation.
 - **AI tools**: the AI can use tools to search existing issues in the inbox and to run web searches when needed.
 - **Local-first sync**: local-first patterns and replication so the app stays responsive and usable while syncing.
 - **GitHub sync**: issues created in the app are **automatically synced** to this GitHub repo.

@@ -1,4 +1,4 @@
-import { defineSchema, type TableDefinition } from "convex/server";
+import { defineSchema, defineTable, type TableDefinition } from "convex/server";
 import { v } from "convex/values";
 import { schema } from "@trestleinc/replicate/server";
 
@@ -134,5 +134,14 @@ export default defineSchema({
         .index("by_issueId", ["issueId"])
         .index("by_issueId_createdAt", ["issueId", "createdAt"]),
   ),
+
+  dmcaSubmissions: defineTable({
+    createdAt: v.number(),
+    repo: v.string(),
+    deviceId: v.optional(v.string()),
+    userName: v.optional(v.string()),
+    userColor: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  }).index("by_createdAt", ["createdAt"]),
 });
 
