@@ -889,6 +889,38 @@ export function IssueReplyComposer({
   const editorRef = useRef<LexicalEditor | null>(null);
   const [fileInputEl, setFileInputEl] = useState<HTMLInputElement | null>(null);
 
+  // When the composer is opened (e.g. via "Reply"), autofocus the editor.
+  // Lexical sets up the editor instance after mount, so we retry briefly.
+  React.useEffect(() => {
+    let cancelled = false;
+    let tries = 0;
+    const maxTries = 90; // ~1.5s at 60fps
+    let rafId: number | null = null;
+
+    const tryFocus = () => {
+      if (cancelled) return;
+
+      const editor = editorRef.current;
+      if (editor) {
+        editor.focus();
+        return;
+      }
+
+      tries += 1;
+      if (tries >= maxTries) return;
+
+      rafId = window.requestAnimationFrame(tryFocus);
+    };
+
+    // Defer to next tick so LexicalComposer + EditorRefPlugin can mount.
+    rafId = window.requestAnimationFrame(tryFocus);
+
+    return () => {
+      cancelled = true;
+      if (rafId != null) window.cancelAnimationFrame(rafId);
+    };
+  }, [replyTo?.avatarId, replyTo?.name]);
+
   const discardDraft = useCallback(() => {
     if (isUploading) return;
 

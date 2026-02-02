@@ -28,6 +28,8 @@ type Attachment = {
   url: string;
   contentType: string | null;
   size: number;
+  kind: "image" | "video" | "file";
+  thumbnailUrl?: string;
 };
 
 type Severity = NonNullable<BugIssueArtifactDraft["severity"]>;
@@ -107,6 +109,87 @@ function appendSection(out: string, heading: string, content: string) {
   if (!c) return out.trim();
   const base = out.trim();
   return [base, `## ${heading}`, "", c].filter(Boolean).join("\n\n").trim();
+}
+
+function escapeMarkdownText(value: string): string {
+  // Avoid breaking link/image text in markdown.
+  return value.replace(/[\[\]]/g, "");
+}
+
+function stripFileExtension(filename: string): string {
+  const i = filename.lastIndexOf(".");
+  if (i <= 0) return filename;
+  return filename.slice(0, i);
+}
+
+async function generateVideoThumbnailFile(videoFile: File): Promise<File> {
+  // Generate a thumbnail from the first ~1s of the video (client-side).
+  const objectUrl = URL.createObjectURL(videoFile);
+  try {
+    const videoEl = document.createElement("video");
+    videoEl.preload = "metadata";
+    videoEl.muted = true;
+    videoEl.playsInline = true;
+    videoEl.src = objectUrl;
+
+    await new Promise<void>((resolve, reject) => {
+      const onLoaded = () => resolve();
+      const onError = () => reject(new Error("Failed to load video for thumbnail."));
+      videoEl.addEventListener("loadedmetadata", onLoaded, { once: true });
+      videoEl.addEventListener("error", onError, { once: true });
+    });
+
+    const duration = Number.isFinite(videoEl.duration) ? videoEl.duration : 0;
+    const targetTime = duration > 0 ? Math.min(1, Math.max(0, duration * 0.1)) : 0;
+
+    await new Promise<void>((resolve, reject) => {
+      const onSeeked = () => resolve();
+      const onError = () => reject(new Error("Failed to seek video for thumbnail."));
+      videoEl.addEventListener("seeked", onSeeked, { once: true });
+      videoEl.addEventListener("error", onError, { once: true });
+      try {
+        videoEl.currentTime = targetTime;
+      } catch {
+        // Some browsers can throw; fall back to 0.
+        videoEl.currentTime = 0;
+      }
+    });
+
+    const vw = videoEl.videoWidth || 0;
+    const vh = videoEl.videoHeight || 0;
+    if (!vw || !vh) {
+      throw new Error("Video thumbnail generation failed (missing dimensions).");
+    }
+
+    // Keep thumbnails reasonably small.
+    const MAX_W = 640;
+    const scale = vw > MAX_W ? MAX_W / vw : 1;
+    const w = Math.max(1, Math.round(vw * scale));
+    const h = Math.max(1, Math.round(vh * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Video thumbnail generation failed (no canvas context).");
+    ctx.drawImage(videoEl, 0, 0, w, h);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => {
+          if (!b) reject(new Error("Video thumbnail generation failed."));
+          else resolve(b);
+        },
+        "image/jpeg",
+        0.82,
+      );
+    });
+
+    const base = stripFileExtension(videoFile.name || "video");
+    return new File([blob], `${base}.jpg`, { type: blob.type || "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 export function BugIssueArtifact({ initialDraft }: { initialDraft: BugIssueArtifactDraft }) {
@@ -191,13 +274,16 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
     let out = stripSection(body.trim(), "Attachments");
     out = stripSection(out, "Severity");
     out = appendSection(out, "Steps to reproduce", stepsToReproduce);
-    out = appendSection(out, "Debug report", debugReport);
     out = appendSection(out, "Expected behavior", expectedBehavior);
     out = appendSection(out, "Actual behavior", actualBehavior);
+    out = appendSection(out, "Debug report", debugReport);
     if (attachments.length > 0) {
       const lines = attachments.map((a) => {
-        const isImage = (a.contentType ?? "").startsWith("image/");
-        return isImage ? `- ![${a.filename}](${a.url})` : `- [${a.filename}](${a.url})`;
+        const label = escapeMarkdownText(a.filename || "attachment");
+        if (a.kind === "image") return `- ![${label}](${a.url})`;
+        if (a.kind === "video" && a.thumbnailUrl)
+          return `- **Video:** [![${label}](${a.thumbnailUrl})](${a.url})`;
+        return `- [${label}](${a.url})`;
       });
       out = appendSection(out, "Attachments", lines.join("\n"));
     }
@@ -466,56 +552,6 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
               <div className="flex w-full flex-col gap-2">
                 <label className="flex select-none items-center gap-2 px-3">
                   <div className="">
-                    <span className="text-copy text-orchid-muted">Steps to reproduce:</span>
-                  </div>
-                </label>
-
-                <textarea
-                  value={stepsToReproduce}
-                  onChange={(e) => setStepsToReproduce(e.target.value)}
-                  placeholder="1) ...\n2) ..."
-                  rows={6}
-                  className={[
-                    "w-full rounded-lg border border-neutral bg-surface px-3 py-2 shadow-md hide-scrollbar",
-                    "text-sm leading-[21px] text-orchid-ink",
-                    "outline-none",
-                    "transition-colors duration-150 ease-in-out",
-                    "resize-none",
-                  ].join(" ")}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-1 items-stretch gap-2 rounded-xl bg-surface-subtle">
-              <div className="flex w-full flex-col gap-2">
-                <label className="flex select-none items-center gap-2 px-3">
-                  <div className="rounded-lg">
-                    <span className="text-copy text-orchid-muted">Debug report:</span>
-                  </div>
-                </label>
-
-                <textarea
-                  value={debugReport}
-                  onChange={(e) => setDebugReport(e.target.value)}
-                  placeholder="Logs, console output, screenshot/recording links, environment details…"
-                  rows={6}
-                  className={[
-                    "w-full rounded-lg border border-neutral bg-surface px-3 py-2 shadow-md hide-scrollbar",
-                    "text-sm leading-[21px] text-orchid-ink",
-                    "outline-none",
-                    "transition-colors duration-150 ease-in-out",
-                    "resize-none",
-                  ].join(" ")}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-5">
-            <div className="flex flex-1 items-stretch gap-2 rounded-xl bg-surface-subtle">
-              <div className="flex w-full flex-col gap-2">
-                <label className="flex select-none items-center gap-2 px-3">
-                  <div className="">
                     <span className="text-copy text-orchid-muted">Expected behavior:</span>
                   </div>
                 </label>
@@ -548,6 +584,56 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
                   value={actualBehavior}
                   onChange={(e) => setActualBehavior(e.target.value)}
                   placeholder="What actually happens?"
+                  rows={6}
+                  className={[
+                    "w-full rounded-lg border border-neutral bg-surface px-3 py-2 shadow-md hide-scrollbar",
+                    "text-sm leading-[21px] text-orchid-ink",
+                    "outline-none",
+                    "transition-colors duration-150 ease-in-out",
+                    "resize-none",
+                  ].join(" ")}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-5">
+            <div className="flex flex-1 items-stretch gap-2 rounded-xl bg-surface-subtle">
+              <div className="flex w-full flex-col gap-2">
+                <label className="flex select-none items-center gap-2 px-3">
+                  <div className="">
+                    <span className="text-copy text-orchid-muted">Steps to reproduce:</span>
+                  </div>
+                </label>
+
+                <textarea
+                  value={stepsToReproduce}
+                  onChange={(e) => setStepsToReproduce(e.target.value)}
+                  placeholder="1) ...\n2) ..."
+                  rows={6}
+                  className={[
+                    "w-full rounded-lg border border-neutral bg-surface px-3 py-2 shadow-md hide-scrollbar",
+                    "text-sm leading-[21px] text-orchid-ink",
+                    "outline-none",
+                    "transition-colors duration-150 ease-in-out",
+                    "resize-none",
+                  ].join(" ")}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-1 items-stretch gap-2 rounded-xl bg-surface-subtle">
+              <div className="flex w-full flex-col gap-2">
+                <label className="flex select-none items-center gap-2 px-3">
+                  <div className="rounded-lg">
+                    <span className="text-copy text-orchid-muted">Debug report:</span>
+                  </div>
+                </label>
+
+                <textarea
+                  value={debugReport}
+                  onChange={(e) => setDebugReport(e.target.value)}
+                  placeholder="Logs, console output, screenshot/recording links, environment details…"
                   rows={6}
                   className={[
                     "w-full rounded-lg border border-neutral bg-surface px-3 py-2 shadow-md hide-scrollbar",
@@ -906,13 +992,40 @@ function BugIssueArtifactReady({ initialDraft }: { initialDraft: BugIssueArtifac
 
               const next: Attachment[] = [];
               for (const f of filesToUpload) {
+                const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20MB
+                const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB
+                if (f.type.startsWith("image/") && f.size > MAX_IMAGE_BYTES) {
+                  throw new Error(`"${f.name}" is too large (max 20MB for images).`);
+                }
+                if (f.type.startsWith("video/") && f.size > MAX_VIDEO_BYTES) {
+                  throw new Error(`"${f.name}" is too large (max 100MB for videos).`);
+                }
+
                 const res = await uploadToUploadsRoute({ file: f, prefix: "issues/" });
                 if (!res.publicUrl) throw new Error("Upload did not return a public URL.");
+                const kind: Attachment["kind"] = f.type.startsWith("video/")
+                  ? "video"
+                  : f.type.startsWith("image/")
+                    ? "image"
+                    : "file";
+
+                let thumbnailUrl: string | undefined;
+                if (kind === "video") {
+                  const thumbFile = await generateVideoThumbnailFile(f);
+                  const thumbRes = await uploadToUploadsRoute({
+                    file: thumbFile,
+                    prefix: "issues/",
+                  });
+                  if (thumbRes.publicUrl) thumbnailUrl = thumbRes.publicUrl;
+                }
+
                 next.push({
                   filename: res.originalFilename,
                   url: res.publicUrl,
                   contentType: res.contentType,
                   size: f.size,
+                  kind,
+                  thumbnailUrl,
                 });
               }
               setAttachments((prev) => [...prev, ...next]);

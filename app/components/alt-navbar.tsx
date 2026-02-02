@@ -3,6 +3,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AvatarMenu } from "@/app/components/avatar-menu";
+import { ConversationPromptBackdrop } from "@/app/components/conversation-prompt-backdrop";
 import { XIcon } from "@/app/components/icons/x-icon";
 import {
   semiGhostButtonBaseClass,
@@ -79,56 +80,117 @@ export function AltNavbar({
   }, [layout]);
 
   const isSticky = layout === "sticky";
+  const backdropHeight = Math.max(navHeight || 0, 80);
 
   return (
     <>
-      <nav
-        ref={navRef}
-        className={[
-          "z-50 px-6 py-5 font-orchid-ui leading-6",
-          // Use fixed positioning so it stays visible even with nested scroll containers.
-          isSticky ? "fixed inset-x-0 top-0 bg-transparent" : "relative",
-          className ?? "",
-        ].join(" ")}
-      >
-        <div className="flex items-center gap-5">
-          <div className="flex min-w-0 flex-1 items-center gap-4">
-            <button
-              type="button"
-              className={[semiGhostButtonBaseClass, "px-[6px]"].join(" ")}
-              onClick={handleClose}
+      {isSticky ? (
+        <div className="fixed inset-x-0 top-0 z-50 w-full">
+          <div className="relative w-full">
+            <ConversationPromptBackdrop
+              edge="top"
+              position="absolute"
+              className="inset-x-0 top-0"
+              height={backdropHeight}
+            />
+            <nav
+              ref={navRef}
+              className={[
+                "relative z-20 px-6 py-5 font-orchid-ui leading-6",
+                // Use fixed positioning so it stays visible even with nested scroll containers.
+                "bg-transparent",
+                className ?? "",
+              ].join(" ")}
             >
-              <div className={semiGhostButtonBgClass} />
-              <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
-                <XIcon className="h-4 w-4" />
-                <span className="px-[2px]">
-                  <span className="sr-only">Go back</span>
-                </span>
-                {showKeycap ? (
-                  <span
-                    className={[
-                      keycapClass,
-                      "inline-flex h-4 items-center rounded border px-1",
-                      "text-[12px] leading-[17.6px]",
-                    ].join(" ")}
+              <div className="flex items-center gap-5">
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <button
+                    type="button"
+                    className={[semiGhostButtonBaseClass, "px-[6px]"].join(" ")}
+                    onClick={handleClose}
                   >
-                    {leftLabel}
-                  </span>
-                ) : null}
+                    <div className={semiGhostButtonBgClass} />
+                    <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
+                      <XIcon className="h-4 w-4" />
+                      <span className="px-[2px]">
+                        <span className="sr-only">Go back</span>
+                      </span>
+                      {showKeycap ? (
+                        <span
+                          className={[
+                            keycapClass,
+                            "inline-flex h-4 items-center rounded border px-1",
+                            "text-[12px] leading-[17.6px]",
+                          ].join(" ")}
+                        >
+                          {leftLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+
+                  {title ? <div className={navTitleClass}>{title}</div> : null}
+                </div>
+
+                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                  {rightActions ? (
+                    <div className="flex items-center gap-2">{rightActions}</div>
+                  ) : null}
+                  <div className="flex">
+                    <AvatarMenu avatarInitial={avatarInitial} align="end" />
+                  </div>
+                </div>
               </div>
-            </button>
-
-            {title ? <div className={navTitleClass}>{title}</div> : null}
-          </div>
-
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-            {rightActions ? <div className="flex items-center gap-2">{rightActions}</div> : null}
-            <div className="flex">
-              <AvatarMenu avatarInitial={avatarInitial} align="end" />
-            </div>
+            </nav>
           </div>
         </div>
-      </nav>
+      ) : (
+        <nav
+          ref={navRef}
+          className={[
+            "relative z-50 px-6 py-5 font-orchid-ui leading-6",
+            className ?? "",
+          ].join(" ")}
+        >
+          <div className="flex items-center gap-5">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <button
+                type="button"
+                className={[semiGhostButtonBaseClass, "px-[6px]"].join(" ")}
+                onClick={handleClose}
+              >
+                <div className={semiGhostButtonBgClass} />
+                <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
+                  <XIcon className="h-4 w-4" />
+                  <span className="px-[2px]">
+                    <span className="sr-only">Go back</span>
+                  </span>
+                  {showKeycap ? (
+                    <span
+                      className={[
+                        keycapClass,
+                        "inline-flex h-4 items-center rounded border px-1",
+                        "text-[12px] leading-[17.6px]",
+                      ].join(" ")}
+                    >
+                      {leftLabel}
+                    </span>
+                  ) : null}
+                </div>
+              </button>
+
+              {title ? <div className={navTitleClass}>{title}</div> : null}
+            </div>
+
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+              {rightActions ? <div className="flex items-center gap-2">{rightActions}</div> : null}
+              <div className="flex">
+                <AvatarMenu avatarInitial={avatarInitial} align="end" />
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
 
       {/* Spacer to keep content from hiding under a fixed bar (optional). */}
       {isSticky && pushContent ? <div aria-hidden style={{ height: navHeight }} /> : null}

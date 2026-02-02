@@ -10,6 +10,8 @@ import { formatIssueStatusLabel } from "@/app/components/icons/issue-status-icon
 import { useReplicateInitState } from "@/app/components/replicate-context";
 import { IssueDetailClient } from "@/app/components/issue-detail";
 import { IssueChatProvider } from "@/app/components/issue-detail/issue-chat-context";
+import { Prompt } from "@/app/components/prompt";
+import { ConversationPromptBackdrop } from "@/app/components/conversation-prompt-backdrop";
 
 export function IssuesInboxList({
   items,
@@ -202,6 +204,10 @@ function IssuesInboxListReady({
             style={{ scrollbarGutter: "stable both-edges" }}
           >
             <IssueChatProvider issueId={openIssueId}>
+              <ConversationPromptBackdrop className="inset-x-0" />
+              <div className="fixed inset-x-0 bottom-6 z-[95] mx-auto w-full max-w-2xl px-5 md:px-0">
+                <Prompt variant="issues" issueIdForComment={openIssueId} />
+              </div>
               <IssueDetailClient
                 issueId={openIssueId}
                 listMode={mode === "done" ? "done" : mode === "sent" ? "sent" : "inbox"}

@@ -19,6 +19,8 @@ import { api } from "@/convex/_generated/api";
 
 // Space reserved for the fixed prompt at the bottom of the page.
 const BOTTOM_PADDING_PX = 164;
+// When auto-scrolling to the newest user message, leave some breathing room from the top edge.
+const NEW_MESSAGE_SCROLL_TOP_PADDING_PX = 58;
 
 export function IssueDetailClient({
   issueId,
@@ -166,6 +168,13 @@ function IssueDetailClientReady({
     setIsReplyOpen(false);
     setReplyTo(null);
   }, []);
+
+  // Discard any open reply composer when navigating between issues (e.g. via J/K).
+  // This component stays mounted across route param changes, so local state would otherwise carry over.
+  useEffect(() => {
+    setIsReplyOpen(false);
+    setReplyTo(null);
+  }, [issueId]);
 
   const { data: issueList, isLoading: issuesLoading, isError: issuesError } =
     useLiveQuery(issues);
@@ -760,7 +769,12 @@ function IssueDetailClientReady({
     if (createdAt < mountedAtRef.current - 1000) return;
 
     recalcSpacer();
-    lastUserMessageRef.current?.scrollIntoView({
+    const anchorEl = lastUserMessageRef.current;
+    if (anchorEl) {
+      // Works with both window scrolling and nested scroll containers.
+      anchorEl.style.scrollMarginTop = `${NEW_MESSAGE_SCROLL_TOP_PADDING_PX}px`;
+    }
+    anchorEl?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
