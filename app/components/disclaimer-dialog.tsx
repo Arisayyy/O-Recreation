@@ -104,11 +104,21 @@ export function DisclaimerDialog({
                   intended as legal, professional, or commercial advice.
                 </p>
                 <p className="m-0">
-                  <strong className="text-orchid-ink">Trademarks.</strong> Any product names, brand
-                  names, trademarks, service marks, or other proprietary designations used in this
-                  project are the property of their respective owners. This project is not
-                  affiliated with, endorsed by, sponsored by, or connected to any such owners. All
-                  such references are used only for identification and educational purposes.
+                  <strong className="text-orchid-ink">Trademarks.</strong> The original Orchid
+                  service is available at{" "}
+                  <a
+                    href="https://orchid.ai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orchid-ink underline underline-offset-2 decoration-neutral hover:decoration-neutral-strong"
+                  >
+                    orchid.ai
+                  </a>
+                  . Any product names, brand names, trademarks, service marks, or other proprietary
+                  designations used in this project are the property of their respective owners.
+                  This project is not affiliated with, endorsed by, sponsored by, or connected to any
+                  such owners. All such references are used only for identification and educational
+                  purposes.
                 </p>
                 <p className="m-0">
                   Content and outputs from this software are not legal or professional advice. The
