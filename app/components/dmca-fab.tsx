@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
+import { DisclaimerDialog } from "@/app/components/disclaimer-dialog";
 import { DmcaNoticeDialog } from "@/app/components/dmca-notice-dialog";
+import { GitHubIcon } from "@/app/components/icons/github-icon";
 import {
   semiGhostButtonBaseClass,
   semiGhostButtonBgClass,
   semiGhostButtonInnerClass,
 } from "@/app/components/issue-detail/semi-ghost-button";
+
+const REPO_URL = "https://github.com/Arisayyy/O-Recreation";
 
 function DocumentIcon({ className }: { className?: string }) {
   return (
@@ -29,15 +33,47 @@ function DocumentIcon({ className }: { className?: string }) {
 }
 
 export function DmcaFab() {
-  const [open, setOpen] = useState(false);
+  const [dmcaOpen, setDmcaOpen] = useState(false);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
         <button
           type="button"
           className={[semiGhostButtonBaseClass, "px-2.5"].join(" ")}
-          onClick={() => setOpen(true)}
+          onClick={() => setDisclaimerOpen(true)}
+        >
+          <div className={semiGhostButtonBgClass} />
+          <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
+            <span className="block size-4 transition-transform">
+              <DocumentIcon />
+            </span>
+            <div className="px-[2px] leading-[0px] transition-transform">
+              Disclaimer
+            </div>
+          </div>
+        </button>
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={[semiGhostButtonBaseClass, "px-2.5 no-underline"].join(" ")}
+        >
+          <div className={semiGhostButtonBgClass} />
+          <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
+            <span className="block size-4 transition-transform">
+              <GitHubIcon className="size-4" />
+            </span>
+            <div className="px-[2px] leading-[0px] transition-transform">
+              Repo
+            </div>
+          </div>
+        </a>
+        <button
+          type="button"
+          className={[semiGhostButtonBaseClass, "px-2.5"].join(" ")}
+          onClick={() => setDmcaOpen(true)}
         >
           <div className={semiGhostButtonBgClass} />
           <div className={semiGhostButtonInnerClass + " pointer-events-none"}>
@@ -49,7 +85,8 @@ export function DmcaFab() {
         </button>
       </div>
 
-      <DmcaNoticeDialog open={open} onOpenChangeAction={setOpen} />
+      <DisclaimerDialog open={disclaimerOpen} onOpenChangeAction={setDisclaimerOpen} />
+      <DmcaNoticeDialog open={dmcaOpen} onOpenChangeAction={setDmcaOpen} />
     </>
   );
 }

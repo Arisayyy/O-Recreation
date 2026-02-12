@@ -358,7 +358,8 @@ export function Prompt({
   const canSendChatMessage =
     variant === "home" || variant === "chat" || (variant === "issues" && !issueIdForComment);
   const isThinking =
-    (canSendChatMessage && (chatStatus === "submitted" || chatStatus === "streaming")) ||
+    (canSendChatMessage &&
+      (variant === "home" ? chatStatus === "streaming" : (chatStatus === "submitted" || chatStatus === "streaming"))) ||
     (canSendIssueChat && (issueChat.status === "submitted" || issueChat.status === "streaming"));
 
   const promptStatus = useMemo(() => {
@@ -376,8 +377,6 @@ export function Prompt({
 
   const showPromptStatus = !!promptStatus;
 
-  // If we leave `/chat` while the assistant is still streaming, stop the in-flight request.
-  // This avoids leaking the "Thinking..." prompt UI onto unrelated routes after exiting chat.
   useEffect(() => {
     const prev = prevVariantRef.current;
     prevVariantRef.current = variant;
